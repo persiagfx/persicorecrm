@@ -1,0 +1,3718 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User ────────────────────────────────────────────────────────────
+model User {
+  id               String    @id @default(cuid())
+  name             String
+  email            String?   @unique
+  phone            String?   @unique
+  passwordHash     String?
+  avatar           String?
+  role             String    @default("sales_rep")
+  color            String    @default("gold")
+  walletBalance    Int       @default(0)
+  joinedAt         DateTime  @default(now())
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  tenantId         String?
+  lastLoginAt      DateTime?
+  resetToken       String?   @unique
+  resetTokenExpiry DateTime?
+  totpSecret       String?
+  totpEnabled      Boolean   @default(false)
+
+  tenant                  Tenant?              @relation(fields: [tenantId], references: [id])
+  leads                   Lead[]               @relation("LeadAssignee")
+  timeEntries             TimeEntry[]
+  activityLogs            ActivityLog[]
+  reminders               Reminder[]
+  notifications           Notification[]
+  commissions             Commission[]
+  payrollRecords          PayrollRecord[]
+  salaryAdvances          SalaryAdvance[]
+  wikiArticles            WikiArticle[]
+  meetingsCreated         Meeting[]            @relation("MeetingCreator")
+  meetingAttendees        MeetingAttendee[]
+  expenses                Expense[]
+  walletTxs               WalletTransaction[]
+  blogPosts               BlogPost[]           @relation("BlogAuthor")
+  approvedExpenses        Expense[]            @relation("ExpenseApprover")
+  deployedChecklists      DeployChecklist[]    @relation("ChecklistDeployer")
+  uploadedFiles           FileItem[]           @relation("FileUploader")
+  createdCampaigns        Campaign[]           @relation("CampaignCreator")
+  createdForms            SurveyForm[]         @relation("FormCreator")
+  legalCasesAsLawyer      LegalCase[]          @relation("CaseLawyer")
+  createdLegalContracts   LegalContract[]      @relation("LegalContractCreator")
+  portalMessages          PortalMessage[]      @relation("CRMUserMessage")
+  // CRM
+  callLogs                CallLog[]
+  customerSegments        CustomerSegment[]    @relation("SegmentCreator")
+  // HR
+  orgNode                 OrgNode?
+  employeeContracts       EmployeeContract[]
+  attendances             Attendance[]
+  leaveRequests           LeaveRequest[]       @relation("LeaveEmployee")
+  leaveReviews            LeaveRequest[]       @relation("LeaveReviewer")
+  performanceKPIs         PerformanceKPI[]     @relation("KPIEmployee")
+  kpiReviews              PerformanceKPI[]     @relation("KPIReviewer")
+  benefits                EmployeeBenefit[]
+  trainingEnrollments     TrainingEnrollment[]
+  jobPostings             JobPosting[]         @relation("JobCreator")
+  jobApplicationsReviewed JobApplication[]     @relation("ApplicationReviewer")
+  shiftAssignments        ShiftAssignment[]
+  onboardings             EmployeeOnboarding[]
+  // ERP
+  ledgerEntries           LedgerEntry[]        @relation("LedgerCreator")
+  journalVouchers         JournalVoucher[]     @relation("JournalCreator")
+  // Legal
+  legalDocuments          LegalDocument[]      @relation("LegalDocUploader")
+  legalDeadlines          LegalDeadline[]      @relation("DeadlineAssignee")
+  // Marketing
+  utmLinks                UTMLink[]            @relation("UTMLinkCreator")
+  emailCampaigns          EmailCampaign[]      @relation("EmailCampaignCreator")
+  personas                MarketingPersona[]   @relation("PersonaCreator")
+  abTests                 ABTest[]             @relation("ABTestCreator")
+  // New features
+  sessions                UserSession[]
+  pushSubscriptions       PushSubscription[]
+  automationRules         AutomationRule[]     @relation("AutomationCreator")
+  salesFunnels            SalesFunnel[]        @relation("FunnelCreator")
+  customerJourneys        CustomerJourney[]    @relation("JourneyCreator")
+  savedReports            SavedReport[]        @relation("ReportCreator")
+}
+
+// ─── Client ──────────────────────────────────────────────────────────
+model Client {
+  id                String    @id @default(cuid())
+  tenantId          String?
+  companyName       String
+  contactName       String
+  contactPhone      String
+  contactEmail      String?
+  address           String?
+  website           String?
+  status            String    @default("active")
+  tags              Json      @default("[]")
+  totalRevenue      Int       @default(0)
+  projectCount      Int       @default(0)
+  lastInteractionAt DateTime?
+  anniversaryDate   DateTime?
+  notes             String?   @db.Text
+  avatar            String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  projects    Project[]
+  invoices    Invoice[]
+  reminders   Reminder[]
+  meetings    Meeting[]
+  contracts   Contract[]
+  leads       Lead[]
+  legalCases  LegalCase[]
+  portalUsers PortalUser[]
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt(sort: Desc)])
+}
+
+// ─── Lead ────────────────────────────────────────────────────────────
+model Lead {
+  id                    String    @id @default(cuid())
+  tenantId              String?
+  companyName           String
+  contactName           String
+  contactPhone          String
+  contactEmail          String?
+  estimatedValue        Int       @default(0)
+  conversionProbability Int       @default(0)
+  status                String    @default("new")
+  columnId              String    @default("new")
+  assigneeId            String?
+  tags                  Json      @default("[]")
+  dueDate               DateTime?
+  notes                 String?   @db.Text
+  source                String?
+  winLossCategory       String?
+  winLossDescription    String?   @db.Text
+  competitorName        String?
+  clientId              String?
+  duplicateOfId         String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  assignee   User?          @relation("LeadAssignee", fields: [assigneeId], references: [id])
+  client     Client?        @relation(fields: [clientId], references: [id])
+  activities LeadActivity[]
+  reminders  Reminder[]
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, status])
+  @@index([assigneeId])
+}
+
+model LeadActivity {
+  id        String   @id @default(cuid())
+  leadId    String
+  type      String   @default("note")
+  content   String   @db.Text
+  authorId  String
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+// ─── Project ─────────────────────────────────────────────────────────
+model Project {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  name        String
+  clientId    String
+  description String?   @db.Text
+  status      String    @default("planning")
+  progress    Int       @default(0)
+  budget      Int       @default(0)
+  spent       Int       @default(0)
+  startDate   DateTime
+  deadline    DateTime
+  completedAt DateTime?
+  memberIds   Json      @default("[]")
+  tags        Json      @default("[]")
+  colorHash   String    @default("from-violet-500 to-purple-500")
+  repoUrl     String?
+  techDocs    Json      @default("[]")
+  servers     Json      @default("[]")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  client           Client            @relation(fields: [clientId], references: [id])
+  tasks            Task[]
+  timeEntries      TimeEntry[]
+  invoices         Invoice[]
+  milestones       Milestone[]
+  deployChecklists DeployChecklist[]
+  contracts        Contract[]
+  meetings         Meeting[]
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, status])
+}
+
+// ─── Task ────────────────────────────────────────────────────────────
+model Task {
+  id             String    @id @default(cuid())
+  projectId      String
+  parentId       String?
+  title          String
+  description    String?   @db.Text
+  status         String    @default("backlog")
+  priority       String    @default("medium")
+  assigneeIds    Json      @default("[]")
+  tags           Json      @default("[]")
+  dueDate        DateTime?
+  startDate      DateTime?
+  estimatedHours Float?
+  trackedSeconds Int       @default(0)
+  order          Int       @default(0)
+  columnId       String?
+  dependencyIds  Json      @default("[]")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  timeEntries TimeEntry[]
+  comments    TaskComment[]
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  content   String   @db.Text
+  authorId  String
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model Milestone {
+  id          String    @id @default(cuid())
+  projectId   String
+  title       String
+  description String?   @db.Text
+  dueDate     DateTime
+  completedAt DateTime?
+  color       String?
+  createdAt   DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model DeployChecklist {
+  id           String    @id @default(cuid())
+  projectId    String
+  environment  String    @default("staging")
+  items        Json      @default("[]")
+  deployedAt   DateTime?
+  deployedById String?
+  createdAt    DateTime  @default(now())
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deployedBy User?   @relation("ChecklistDeployer", fields: [deployedById], references: [id])
+}
+
+// ─── Time Tracking ───────────────────────────────────────────────────
+model TimeEntry {
+  id              String    @id @default(cuid())
+  taskId          String?
+  projectId       String
+  userId          String
+  startedAt       DateTime
+  endedAt         DateTime?
+  durationSeconds Int       @default(0)
+  notes           String?
+  isRunning       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  task    Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+}
+
+// ─── Invoice ─────────────────────────────────────────────────────────
+model Invoice {
+  id                     String    @id @default(cuid())
+  tenantId               String?
+  invoiceNumber          String    @unique
+  type                   String    @default("invoice")
+  clientId               String
+  projectId              String?
+  items                  Json      @default("[]")
+  subtotal               Int       @default(0)
+  taxRate                Float     @default(9)
+  taxAmount              Int       @default(0)
+  discount               Int       @default(0)
+  total                  Int       @default(0)
+  status                 String    @default("draft")
+  issuedAt               DateTime  @default(now())
+  dueDate                DateTime
+  paidAt                 DateTime?
+  notes                  String?   @db.Text
+  isRecurring            Boolean   @default(false)
+  recurringInterval      String?
+  nextInvoiceDate        DateTime?
+  // Admin signature
+  adminSignatureDataUrl  String?   @db.LongText
+  adminSignedAt          DateTime?
+  // Client signature (portal signing)
+  signToken              String?   @unique
+  clientSignatureDataUrl String?   @db.LongText
+  clientSignedAt         DateTime?
+  clientSignedIp         String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  client       Client              @relation(fields: [clientId], references: [id])
+  project      Project?            @relation(fields: [projectId], references: [id])
+  installments Installment[]
+  commissions  CommissionInvoice[]
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, status])
+  @@index([clientId])
+}
+
+model Installment {
+  id            String    @id @default(cuid())
+  invoiceId     String
+  amount        Int
+  dueDate       DateTime
+  paidAt        DateTime?
+  paidAmount    Int?
+  paymentMethod String?
+  reference     String?
+  notes         String?
+  status        String    @default("pending")
+  createdAt     DateTime  @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+// ─── Expense ─────────────────────────────────────────────────────────
+model Expense {
+  id             String    @id @default(cuid())
+  tenantId       String?
+  title          String
+  amount         Int
+  category       String    @default("other")
+  date           DateTime
+  paidById       String
+  receipt        String?
+  notes          String?
+  approvalStatus String    @default("pending")
+  approvedById   String?
+  approvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  paidBy     User  @relation(fields: [paidById], references: [id])
+  approvedBy User? @relation("ExpenseApprover", fields: [approvedById], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, category])
+}
+
+// ─── Contract ────────────────────────────────────────────────────────
+model ContractTemplate {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  content   String   @db.LongText
+  variables Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contracts Contract[]
+}
+
+model Contract {
+  id                    String    @id @default(cuid())
+  tenantId              String?
+  templateId            String?
+  clientId              String
+  projectId             String?
+  title                 String
+  content               String    @db.LongText
+  status                String    @default("draft")
+  // Admin signature
+  adminSignedAt         DateTime?
+  adminSignatureDataUrl String?   @db.LongText
+  // Client signature
+  signToken             String?   @unique
+  signedAt              DateTime?
+  signedIp              String?
+  signatureDataUrl      String?   @db.LongText
+  sentAt                DateTime?
+  expiresAt             DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  template ContractTemplate? @relation(fields: [templateId], references: [id])
+  client   Client            @relation(fields: [clientId], references: [id])
+  project  Project?          @relation(fields: [projectId], references: [id])
+}
+
+// ─── Ticket ──────────────────────────────────────────────────────────
+model Ticket {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  title       String
+  description String?   @db.Text
+  status      String    @default("open")
+  priority    String    @default("medium")
+  reporterId  String
+  assigneeId  String?
+  projectId   String?
+  tags        Json      @default("[]")
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  comments TicketComment[]
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, status])
+  @@index([assigneeId])
+}
+
+model TicketComment {
+  id        String   @id @default(cuid())
+  ticketId  String
+  content   String   @db.Text
+  authorId  String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+// ─── Wiki ────────────────────────────────────────────────────────────
+model WikiFolder {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  parentId  String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  articles WikiArticle[]
+}
+
+model WikiArticle {
+  id        String   @id @default(cuid())
+  folderId  String
+  title     String
+  content   String   @db.LongText
+  authorId  String
+  isPinned  Boolean  @default(false)
+  tags      Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  folder WikiFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  author User       @relation(fields: [authorId], references: [id])
+}
+
+// ─── File ────────────────────────────────────────────────────────────
+model FileFolder {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  parentId  String?
+  projectId String?
+  createdAt DateTime @default(now())
+
+  files FileItem[]
+}
+
+model FileItem {
+  id             String   @id @default(cuid())
+  name           String
+  type           String
+  size           Int      @default(0)
+  folderId       String?
+  projectId      String?
+  uploadedById   String
+  url            String
+  thumbnailUrl   String?
+  version        Int      @default(1)
+  approvalStatus String   @default("pending")
+  designComments Json     @default("[]")
+  createdAt      DateTime @default(now())
+
+  folder     FileFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  uploadedBy User        @relation("FileUploader", fields: [uploadedById], references: [id])
+}
+
+// ─── Activity Log ────────────────────────────────────────────────────
+model ActivityLog {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  actorId     String
+  action      String
+  entityType  String
+  entityId    String
+  entityName  String
+  description String   @db.Text
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([actorId])
+}
+
+// ─── Notification ────────────────────────────────────────────────────
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String
+  title      String
+  body       String   @db.Text
+  entityId   String?
+  entityType String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+// ─── Reminder ────────────────────────────────────────────────────────
+model Reminder {
+  id          String   @id @default(cuid())
+  userId      String
+  leadId      String?
+  clientId    String?
+  title       String
+  notes       String?  @db.Text
+  dueDate     DateTime
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id])
+  lead   Lead?   @relation(fields: [leadId], references: [id])
+  client Client? @relation(fields: [clientId], references: [id])
+}
+
+// ─── Meeting ─────────────────────────────────────────────────────────
+model Meeting {
+  id               String   @id @default(cuid())
+  tenantId         String?
+  title            String
+  type             String   @default("internal")
+  status           String   @default("scheduled")
+  startAt          DateTime
+  endAt            DateTime
+  location         String?
+  meetingUrl       String?
+  agenda           String?  @db.Text
+  minutes          String?  @db.Text
+  relatedProjectId String?
+  relatedClientId  String?
+  isPrivate        Boolean  @default(false)
+  createdById      String
+  actionItems      Json     @default("[]")
+  createdAt        DateTime @default(now())
+
+  createdBy User              @relation("MeetingCreator", fields: [createdById], references: [id])
+  project   Project?          @relation(fields: [relatedProjectId], references: [id])
+  client    Client?           @relation(fields: [relatedClientId], references: [id])
+  attendees MeetingAttendee[]
+}
+
+model MeetingAttendee {
+  id        String @id @default(cuid())
+  meetingId String
+  userId    String
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([meetingId, userId])
+}
+
+// ─── Service / Product ───────────────────────────────────────────────
+model ServiceItem {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  code         String   @unique
+  name         String
+  category     String   @default("other")
+  defaultPrice Int      @default(0)
+  unit         String   @default("hour")
+  taxRate      Float    @default(9)
+  description  String?  @db.Text
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+// ─── Payroll ─────────────────────────────────────────────────────────
+model PayrollRecord {
+  id                  String    @id @default(cuid())
+  tenantId            String?
+  userId              String
+  period              String
+  baseSalary          Int       @default(0)
+  overtimePay         Int       @default(0)
+  travelAllowance     Int       @default(0)
+  housingAllowance    Int       @default(0)
+  bonus               Int       @default(0)
+  deductions          Int       @default(0)
+  taxAmount           Int       @default(0)
+  insuranceDeduction  Int       @default(0)
+  loanDeduction       Int       @default(0)
+  netPay              Int       @default(0)
+  workingDays         Int       @default(22)
+  presentDays         Int       @default(22)
+  leaveDays           Int       @default(0)
+  overtimeHours       Float     @default(0)
+  status              String    @default("draft")
+  paidAt              DateTime?
+  notes               String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, period])
+  @@unique([tenantId, userId, period])
+}
+
+model SalaryAdvance {
+  id           String    @id @default(cuid())
+  tenantId     String?
+  userId       String
+  amount       Int
+  reason       String
+  description  String?   @db.Text
+  neededAt     DateTime
+  status       String    @default("pending")
+  reviewedById String?
+  reviewNote   String?
+  reviewedAt   DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ─── Commission ──────────────────────────────────────────────────────
+model Commission {
+  id           String    @id @default(cuid())
+  tenantId     String?
+  userId       String
+  period       String
+  totalRevenue Int       @default(0)
+  percentage   Float     @default(0)
+  amount       Int       @default(0)
+  status       String    @default("pending")
+  paidAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  user     User                @relation(fields: [userId], references: [id])
+  invoices CommissionInvoice[]
+}
+
+model CommissionInvoice {
+  commissionId String
+  invoiceId    String
+
+  commission Commission @relation(fields: [commissionId], references: [id], onDelete: Cascade)
+  invoice    Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@id([commissionId, invoiceId])
+}
+
+// ─── Wallet ──────────────────────────────────────────────────────────
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   @default("credit")
+  amount      Int
+  description String
+  projectId   String?
+  invoiceId   String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ─── Marketing ───────────────────────────────────────────────────────
+model Campaign {
+  id                String    @id @default(cuid())
+  tenantId          String?
+  title             String
+  channel           String    @default("other")
+  status            String    @default("draft")
+  budget            Int       @default(0)
+  startDate         DateTime
+  endDate           DateTime?
+  metrics           Json      @default("{\"impressions\":0,\"clicks\":0,\"conversions\":0,\"spend\":0,\"revenue\":0}")
+  targetAudience    String?
+  description       String?   @db.Text
+  progressNotes     Json      @default("[]")
+  targetROI         Float?
+  targetConversions Int?
+  createdById       String
+  createdAt         DateTime  @default(now())
+
+  contentPieces ContentPiece[]
+  createdBy     User           @relation("CampaignCreator", fields: [createdById], references: [id])
+}
+
+model ContentPiece {
+  id          String    @id @default(cuid())
+  title       String
+  type        String    @default("blog")
+  channel     String    @default("other")
+  status      String    @default("idea")
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  assigneeId  String
+  campaignId  String?
+  url         String?
+  notes       String?
+  body        String?   @db.LongText
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+}
+
+// ─── Legal ───────────────────────────────────────────────────────────
+model LegalCase {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  caseNumber  String    @unique
+  title       String
+  type        String    @default("other")
+  status      String    @default("open")
+  plaintiff   String
+  defendant   String
+  court       String?
+  lawyerId    String
+  clientId    String?
+  nextHearing DateTime?
+  description String?   @db.Text
+  actions     Json      @default("[]")
+  documents   Json      @default("[]")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  client   Client?        @relation(fields: [clientId], references: [id])
+  lawyer   User           @relation("CaseLawyer", fields: [lawyerId], references: [id])
+  hearings CourtHearing[]
+}
+
+model LegalContract {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  title       String
+  type        String    @default("service")
+  parties     Json      @default("[]")
+  startDate   DateTime
+  endDate     DateTime?
+  status      String    @default("draft")
+  fileUrl     String?
+  notes       String?   @db.Text
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  createdBy User @relation("LegalContractCreator", fields: [createdById], references: [id])
+}
+
+// ─── Forms / Survey ──────────────────────────────────────────────────
+model SurveyForm {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  title       String
+  description String?   @db.Text
+  type        String    @default("custom")
+  questions   Json      @default("[]")
+  status      String    @default("draft")
+  createdById String
+  createdAt   DateTime  @default(now())
+  closedAt    DateTime?
+
+  responses FormResponse[]
+  createdBy User           @relation("FormCreator", fields: [createdById], references: [id])
+}
+
+model FormResponse {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  formId       String
+  respondentId String?
+  answers      Json     @default("{}")
+  leadId       String?
+  submittedAt  DateTime @default(now())
+
+  form SurveyForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+}
+
+// ─── Portal ───────────────────────────────────────────────────────────
+model PortalUser {
+  id               String    @id @default(cuid())
+  clientId         String
+  name             String
+  phone            String?   @unique
+  email            String?   @unique
+  passwordHash     String?
+  role             String    @default("viewer")
+  isActive         Boolean   @default(true)
+  lastLoginAt      DateTime?
+  resetToken       String?   @unique
+  resetTokenExpiry DateTime?
+  signatureDataUrl String?   @db.LongText
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  client        Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tickets       PortalTicket[]
+  messages      PortalMessage[]
+  notifications PortalNotification[]
+}
+
+model PortalTicket {
+  id                String    @id @default(cuid())
+  clientId          String
+  portalUserId      String
+  title             String
+  description       String    @db.Text
+  priority          String    @default("medium")
+  status            String    @default("open")
+  category          String    @default("general")
+  satisfactionScore Int?
+  createdAt         DateTime  @default(now())
+  resolvedAt        DateTime?
+
+  portalUser PortalUser          @relation(fields: [portalUserId], references: [id])
+  replies    PortalTicketReply[]
+}
+
+model PortalTicketReply {
+  id          String   @id @default(cuid())
+  ticketId    String
+  authorId    String
+  authorType  String
+  authorName  String
+  content     String   @db.Text
+  attachments Json     @default("[]")
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  ticket PortalTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model PortalMessage {
+  id           String   @id @default(cuid())
+  clientId     String
+  portalUserId String?
+  crmUserId    String?
+  authorType   String
+  authorName   String
+  content      String   @db.Text
+  attachments  Json     @default("[]")
+  isRead       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  portalUser PortalUser? @relation(fields: [portalUserId], references: [id])
+  crmUser    User?       @relation("CRMUserMessage", fields: [crmUserId], references: [id])
+}
+
+model PortalNotification {
+  id           String   @id @default(cuid())
+  portalUserId String
+  type         String
+  title        String
+  body         String
+  entityId     String?
+  entityType   String?
+  isRead       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  portalUser PortalUser @relation(fields: [portalUserId], references: [id], onDelete: Cascade)
+}
+
+model PortalPayment {
+  id           String    @id @default(cuid())
+  clientId     String
+  invoiceId    String
+  amount       Int
+  method       String    @default("zarinpal")
+  status       String    @default("pending")
+  trackingCode String?
+  authority    String?
+  paidAt       DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+// ─── Team Messages (چت داخلی تیم) ────────────────────────────────────
+model TeamConversation {
+  id             String   @id @default(cuid())
+  tenantId       String?
+  participantIds Json     @default("[]")
+  isGroup        Boolean  @default(false)
+  groupName      String?
+  isPinned       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  messages TeamMessage[]
+}
+
+model TeamMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String   @db.Text
+  type           String   @default("text")
+  readBy         Json     @default("[]")
+  createdAt      DateTime @default(now())
+
+  conversation TeamConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+// ─── Company Settings ─────────────────────────────────────────────────
+model CompanySettings {
+  id                 String  @id @default("default")
+  name               String  @default("پرسی‌کور")
+  legalName          String?
+  taxId              String?
+  registrationNumber String?
+  address            String?
+  phone              String?
+  email              String?
+  website            String?
+  logoUrl            String?
+  invoiceFooter      String? @db.Text
+  invoiceColor       String  @default("#8B5CF6")
+  timezone           String  @default("Asia/Tehran")
+  currency           String  @default("IRR")
+  primaryColor       String?
+  adminSavedSignature String? @db.LongText
+}
+
+// ─── Blog ─────────────────────────────────────────────────────────────
+model BlogPost {
+  id                String    @id @default(cuid())
+  title             String
+  slug              String    @unique
+  excerpt           String?   @db.Text
+  content           String    @db.LongText
+  mdxContent        String?   @db.LongText
+  contentType       String    @default("rich")
+  coverImage        String?
+  authorId          String
+  categoryId        String?
+  status            String    @default("draft")
+  featured          Boolean   @default(false)
+  publishedAt       DateTime?
+  scheduledAt       DateTime?
+  readingTime       Int       @default(0)
+  views             Int       @default(0)
+  // SEO پایه
+  seoTitle          String?
+  seoDesc           String?   @db.Text
+  seoKeywords       String?
+  focusKeyword      String?
+  canonicalUrl      String?
+  // Robots
+  noIndex           Boolean   @default(false)
+  noFollow          Boolean   @default(false)
+  // Open Graph
+  ogTitle           String?
+  ogDesc            String?   @db.Text
+  ogImage           String?
+  ogType            String    @default("article")
+  // Twitter Card
+  twitterTitle      String?
+  twitterDesc       String?   @db.Text
+  twitterImage      String?
+  twitterCard       String    @default("summary_large_image")
+  // Schema
+  schemaType        String    @default("BlogPosting")
+  // Sitemap
+  sitemapPriority   Float     @default(0.7)
+  sitemapChangeFreq String    @default("weekly")
+
+  tags      Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author   User          @relation("BlogAuthor", fields: [authorId], references: [id])
+  category BlogCategory? @relation(fields: [categoryId], references: [id])
+  comments BlogComment[]
+
+  @@index([status, publishedAt])
+  @@index([slug])
+}
+
+model BlogCategory {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  color       String   @default("#8B5CF6")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  posts BlogPost[]
+}
+
+model BlogComment {
+  id          String   @id @default(cuid())
+  postId      String
+  authorName  String
+  authorEmail String
+  content     String   @db.Text
+  approved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+// ─── Site Settings ────────────────────────────────────────────────────
+model SiteSettings {
+  id               String   @id @default("main")
+  siteName         String   @default("Persicore")
+  siteTagline      String?
+  siteDesc         String?  @db.Text
+  logoUrl          String?
+  faviconUrl       String?
+  seoKeywords      String?
+  googleAnalytics  String?
+  twitter          String?
+  instagram        String?
+  linkedin         String?
+  github           String?
+  blogPostsPerPage Int      @default(9)
+  blogShowAuthor   Boolean  @default(true)
+  navItems         Json     @default("[]")
+  footerLinks      Json     @default("[]")
+  updatedAt        DateTime @default(now()) @updatedAt
+}
+
+// ─── Resume ───────────────────────────────────────────────────────────
+model Resume {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  isPublished Boolean @default(false)
+  theme       String  @default("dark")
+  accentColor String  @default("#8B5CF6")
+  lang        String  @default("bilingual")
+
+  // اطلاعات شخصی
+  fullName   String
+  fullNameFa String?
+  title      String
+  titleFa    String?
+  bio        String? @db.Text
+  bioFa      String? @db.Text
+  avatar     String?
+  coverImage String?
+  location   String?
+  locationFa String?
+  email      String?
+  phone      String?
+  website    String?
+  // شبکه اجتماعی
+  linkedin   String?
+  github     String?
+  twitter    String?
+  instagram  String?
+  behance    String?
+  dribbble   String?
+  telegram   String?
+  youtube    String?
+
+  // بخش‌های رزومه
+  experience     Json @default("[]")
+  education      Json @default("[]")
+  skills         Json @default("[]")
+  projects       Json @default("[]")
+  certifications Json @default("[]")
+  awards         Json @default("[]")
+  publications   Json @default("[]")
+  languages      Json @default("[]")
+  volunteering   Json @default("[]")
+  references     Json @default("[]")
+  customSections Json @default("[]")
+
+  // SEO
+  seoTitle String?
+  seoDesc  String? @db.Text
+  ogImage  String?
+
+  // ترتیب بخش‌ها
+  sectionOrder Json @default("[]")
+
+  views     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([isPublished])
+}
+
+// ─── Proposal ─────────────────────────────────────────────────────────
+model Proposal {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  isPublished Boolean @default(false)
+  status      String  @default("draft") // draft | sent | viewed | accepted | rejected
+
+  // اطلاعات مشتری
+  clientName    String
+  clientCompany String?
+  clientEmail   String?
+  clientPhone   String?
+
+  // برندینگ
+  primaryColor   String  @default("#8B5CF6")
+  secondaryColor String  @default("#EC4899")
+  darkMode       Boolean @default(true)
+  agencyName     String  @default("Persicore")
+  agencyLogo     String?
+  coverImage     String?
+
+  // معرفی پروژه
+  projectTitle     String
+  projectSubtitle  String?
+  projectType      String  @default("website") // website | app | crm | ecommerce | other
+  projectSummary   String? @db.Text
+  problemStatement String? @db.Text
+  ourSolution      String? @db.Text
+  goals            Json    @default("[]") // string[]
+
+  // اسکوپ کار
+  deliverables Json @default("[]")
+  // [{ id, title, description, icon, category }]
+
+  // مراحل اجرا
+  phases Json @default("[]")
+  // [{ id, title, description, duration, tasks: string[] }]
+
+  // پکیج‌های قیمتی
+  currency String @default("تومان")
+  packages Json   @default("[]")
+  // [{ id, name, price, priceNote, description, features: string[], highlighted, color }]
+
+  // پورتفولیو
+  portfolioItems Json @default("[]")
+  // [{ id, title, description, url, image, tags: string[] }]
+
+  // مزایا
+  advantages Json @default("[]")
+  // [{ id, title, description, icon }]
+
+  // تیم
+  team Json @default("[]")
+  // [{ id, name, role, avatar, bio }]
+
+  // نظرات مشتریان
+  testimonials Json @default("[]")
+  // [{ id, name, company, role, text, avatar, rating }]
+
+  // سوالات متداول
+  faqs Json @default("[]")
+  // [{ id, question, answer }]
+
+  // CTA / تماس
+  ctaTitle       String?
+  ctaText        String? @db.Text
+  ctaButtonText  String?
+  contactEmail   String?
+  contactPhone   String?
+  contactAddress String?
+
+  // شرایط
+  validUntil DateTime?
+  terms      String?   @db.Text
+  notes      String?   @db.Text
+
+  // SEO
+  seoTitle String?
+  seoDesc  String? @db.Text
+
+  // روش کار
+  process Json @default("[]")
+  // [{ id, step, title, description, icon, duration }]
+
+  // آمار شرکت
+  stats Json @default("[]")
+  // [{ id, value, label, icon }]
+
+  // ترتیب بخش‌ها
+  sectionOrder Json @default("[]")
+
+  views    Int       @default(0)
+  viewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([status])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── CRM Additions ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model CallLog {
+  id         String   @id @default(cuid())
+  tenantId   String?
+  entityType String // lead | client
+  entityId   String
+  direction  String   @default("outbound") // inbound | outbound
+  outcome    String   @default("no_answer") // answered | no_answer | busy | voicemail | meeting_set
+  duration   Int?
+  notes      String?  @db.Text
+  userId     String
+  calledAt   DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+}
+
+model CustomerSegment {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  name        String
+  description String?  @db.Text
+  color       String   @default("#8B5CF6")
+  filters     Json     @default("{}")
+  clientIds   Json     @default("[]")
+  autoUpdate  Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User @relation("SegmentCreator", fields: [createdById], references: [id])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── HR ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model OrgNode {
+  id         String   @id @default(cuid())
+  tenantId   String?
+  userId     String   @unique
+  parentId   String?
+  position   String?
+  department String?
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id])
+  parent   OrgNode?  @relation("OrgHierarchy", fields: [parentId], references: [id])
+  children OrgNode[] @relation("OrgHierarchy")
+}
+
+model EmployeeContract {
+  id         String    @id @default(cuid())
+  tenantId   String?
+  userId     String
+  type       String    @default("full_time") // full_time | part_time | contract | internship
+  startDate  DateTime
+  endDate    DateTime?
+  salary     Int       @default(0)
+  position   String
+  department String?
+  fileUrl    String?
+  status     String    @default("active") // active | expired | terminated
+  notes      String?   @db.Text
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Attendance {
+  id        String    @id @default(cuid())
+  userId    String
+  date      DateTime
+  checkIn   DateTime?
+  checkOut  DateTime?
+  status    String    @default("present") // present | absent | late | half_day | holiday | leave
+  notes     String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model LeaveRequest {
+  id           String    @id @default(cuid())
+  userId       String
+  type         String    @default("annual") // annual | sick | personal | maternity | unpaid
+  startDate    DateTime
+  endDate      DateTime
+  days         Float     @default(1)
+  reason       String?   @db.Text
+  status       String    @default("pending") // pending | approved | rejected
+  reviewedById String?
+  reviewedAt   DateTime?
+  reviewNote   String?
+  createdAt    DateTime  @default(now())
+
+  user       User  @relation("LeaveEmployee", fields: [userId], references: [id])
+  reviewedBy User? @relation("LeaveReviewer", fields: [reviewedById], references: [id])
+}
+
+model PerformanceKPI {
+  id           String   @id @default(cuid())
+  userId       String
+  period       String
+  goals        Json     @default("[]")
+  score        Float?
+  grade        String?
+  reviewedById String?
+  reviewNotes  String?  @db.Text
+  status       String   @default("draft") // draft | submitted | reviewed
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user       User  @relation("KPIEmployee", fields: [userId], references: [id])
+  reviewedBy User? @relation("KPIReviewer", fields: [reviewedById], references: [id])
+}
+
+model EmployeeBenefit {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String    @default("insurance") // insurance | loan | allowance | other
+  title     String
+  amount    Int?
+  startDate DateTime
+  endDate   DateTime?
+  notes     String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model TrainingCourse {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  title       String
+  description String?  @db.Text
+  instructor  String?
+  duration    Int?
+  category    String   @default("technical")
+  fileUrl     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  enrollments TrainingEnrollment[]
+}
+
+model TrainingEnrollment {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  courseId    String
+  userId      String
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+  score       Int?
+  certificate String?
+
+  course TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User           @relation(fields: [userId], references: [id])
+
+  @@unique([courseId, userId])
+}
+
+model JobPosting {
+  id           String    @id @default(cuid())
+  tenantId     String?
+  title        String
+  department   String?
+  type         String    @default("full_time")
+  location     String?
+  description  String?   @db.LongText
+  requirements String?   @db.Text
+  salaryFrom   Int?
+  salaryTo     Int?
+  status       String    @default("open") // open | closed | draft
+  deadline     DateTime?
+  createdById  String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  createdBy    User             @relation("JobCreator", fields: [createdById], references: [id])
+  applications JobApplication[]
+}
+
+model JobApplication {
+  id           String   @id @default(cuid())
+  jobId        String
+  fullName     String
+  email        String
+  phone        String?
+  resumeUrl    String?
+  coverLetter  String?  @db.Text
+  status       String   @default("new") // new | reviewing | interview | offer | rejected | hired
+  reviewedById String?
+  notes        String?  @db.Text
+  appliedAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  job        JobPosting @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  reviewedBy User?      @relation("ApplicationReviewer", fields: [reviewedById], references: [id])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── ERP – Accounting ───────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model ChartOfAccount {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  code        String   @unique
+  name        String
+  nameFa      String
+  type        String // asset | liability | equity | revenue | expense
+  parentId    String?
+  isActive    Boolean  @default(true)
+  description String?
+  createdAt   DateTime @default(now())
+
+  parent        ChartOfAccount?  @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children      ChartOfAccount[] @relation("AccountHierarchy")
+  debitEntries  LedgerEntry[]    @relation("DebitAccount")
+  creditEntries LedgerEntry[]    @relation("CreditAccount")
+  journalLines  JournalLine[]    @relation("JournalLineAccount")
+  budgets       Budget[]
+}
+
+model LedgerEntry {
+  id              String   @id @default(cuid())
+  tenantId        String?
+  date            DateTime
+  description     String   @db.Text
+  debitAccountId  String
+  creditAccountId String
+  amount          Int
+  reference       String?
+  entityType      String?
+  entityId        String?
+  createdById     String
+  createdAt       DateTime @default(now())
+
+  debitAccount  ChartOfAccount @relation("DebitAccount", fields: [debitAccountId], references: [id])
+  creditAccount ChartOfAccount @relation("CreditAccount", fields: [creditAccountId], references: [id])
+  createdBy     User           @relation("LedgerCreator", fields: [createdById], references: [id])
+
+  @@index([date])
+  @@index([entityType, entityId])
+}
+
+// ─── سند حسابداری چندسطری ─────────────────────────────────────────────────────
+model JournalVoucher {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  number      Int
+  date        DateTime
+  description String   @db.Text
+  status      String   @default("draft") // draft | posted | cancelled
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lines     JournalLine[]
+  createdBy User          @relation("JournalCreator", fields: [createdById], references: [id])
+
+  @@index([date])
+  @@index([tenantId, number])
+}
+
+model JournalLine {
+  id        String  @id @default(cuid())
+  voucherId String
+  accountId String
+  debit     Int     @default(0)
+  credit    Int     @default(0)
+  note      String?
+
+  voucher JournalVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  account ChartOfAccount @relation("JournalLineAccount", fields: [accountId], references: [id])
+
+  @@index([voucherId])
+}
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  tenantId      String?
+  name          String
+  bankName      String
+  accountNumber String
+  iban          String?
+  currency      String   @default("IRR")
+  balance       Int      @default(0)
+  isActive      Boolean  @default(true)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  transactions BankTransaction[]
+  checks       BankCheck[]
+}
+
+model BankTransaction {
+  id             String    @id @default(cuid())
+  tenantId       String?
+  accountId      String
+  type           String    @default("credit") // credit | debit
+  amount         Int
+  description    String
+  reference      String?
+  date           DateTime
+  balance        Int       @default(0)
+  entityType     String?
+  entityId       String?
+  reconciled     Boolean   @default(false)
+  reconciledAt   DateTime?
+  createdAt      DateTime  @default(now())
+
+  account BankAccount @relation(fields: [accountId], references: [id])
+
+  @@index([accountId, date])
+  @@index([tenantId, reconciled])
+}
+
+model BankCheck {
+  id          String   @id @default(cuid())
+  accountId   String?
+  type        String   @default("issued") // issued | received
+  payee       String
+  amount      Int
+  checkNumber String
+  dueDate     DateTime
+  issuedDate  DateTime @default(now())
+  status      String   @default("pending") // pending | cleared | bounced | cancelled
+  description String?
+  entityType  String?
+  entityId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  account BankAccount? @relation(fields: [accountId], references: [id])
+
+  @@index([dueDate])
+}
+
+model FixedAsset {
+  id               String    @id @default(cuid())
+  tenantId         String?
+  name             String
+  category         String    @default("equipment")
+  purchaseDate     DateTime
+  purchasePrice    Int
+  currentValue     Int
+  depreciationRate Float     @default(20)
+  location         String?
+  serialNumber     String?
+  warrantyExpiry   DateTime?
+  status           String    @default("active") // active | sold | disposed | maintenance
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model TaxRecord {
+  id         String    @id @default(cuid())
+  tenantId   String?
+  period     String
+  type       String    @default("vat") // vat | income | other
+  totalSales Int       @default(0)
+  taxableAmt Int       @default(0)
+  taxRate    Float     @default(9)
+  taxAmount  Int       @default(0)
+  exemptions Int       @default(0)
+  status     String    @default("draft") // draft | filed | paid
+  dueDate    DateTime?
+  paidAt     DateTime?
+  notes      String?   @db.Text
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── Legal Additions ─────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model LegalDocument {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  caseId       String?
+  title        String
+  type         String   @default("other")
+  fileUrl      String
+  version      Int      @default(1)
+  notes        String?
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  uploadedBy User @relation("LegalDocUploader", fields: [uploadedById], references: [id])
+
+  @@index([caseId])
+}
+
+model CourtHearing {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  caseId    String
+  date      DateTime
+  court     String
+  judge     String?
+  notes     String?  @db.Text
+  outcome   String?
+  status    String   @default("scheduled") // scheduled | completed | postponed | cancelled
+  createdAt DateTime @default(now())
+
+  case LegalCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+model LegalDeadline {
+  id           String    @id @default(cuid())
+  tenantId     String?
+  caseId       String?
+  contractId   String?
+  title        String
+  dueDate      DateTime
+  type         String    @default("other")
+  priority     String    @default("medium")
+  isCompleted  Boolean   @default(false)
+  completedAt  DateTime?
+  assignedToId String?
+  notes        String?
+  createdAt    DateTime  @default(now())
+
+  assignedTo User? @relation("DeadlineAssignee", fields: [assignedToId], references: [id])
+
+  @@index([dueDate])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── Marketing Additions ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model UTMLink {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  campaignId   String?
+  title        String
+  baseUrl      String   @db.Text
+  source       String
+  medium       String
+  campaignName String
+  term         String?
+  content      String?
+  shortCode    String?  @unique
+  clicks       Int      @default(0)
+  createdById  String
+  createdAt    DateTime @default(now())
+
+  createdBy User @relation("UTMLinkCreator", fields: [createdById], references: [id])
+}
+
+model EmailCampaign {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  title       String
+  subject     String
+  preheader   String?
+  content     String    @db.LongText
+  status      String    @default("draft") // draft | scheduled | sending | sent
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  recipients  Json      @default("[]")
+  stats       Json      @default("{\"sent\":0,\"opened\":0,\"clicked\":0,\"bounced\":0,\"unsubscribed\":0}")
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  createdBy User @relation("EmailCampaignCreator", fields: [createdById], references: [id])
+}
+
+model MarketingPersona {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  name        String
+  avatar      String?
+  age         String?
+  job         String?
+  goals       Json     @default("[]")
+  painPoints  Json     @default("[]")
+  channels    Json     @default("[]")
+  description String?  @db.Text
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User @relation("PersonaCreator", fields: [createdById], references: [id])
+}
+
+model LandingPage {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  title       String
+  slug        String   @unique
+  campaignId  String?
+  sections    Json     @default("[]")
+  formFields  Json     @default("[]")
+  submissions Int      @default(0)
+  isPublished Boolean  @default(false)
+  metaTitle   String?
+  metaDesc    String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  leads LandingPageLead[]
+}
+
+model LandingPageLead {
+  id        String   @id @default(cuid())
+  pageId    String
+  data      Json
+  ip        String?
+  source    String?
+  createdAt DateTime @default(now())
+
+  page LandingPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+}
+
+model ABTest {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  title       String
+  campaignId  String?
+  variantA    Json
+  variantB    Json
+  metric      String    @default("clicks") // clicks | conversions | opens
+  status      String    @default("draft") // draft | running | completed
+  winner      String? // A | B
+  statsA      Json      @default("{\"views\":0,\"conversions\":0}")
+  statsB      Json      @default("{\"views\":0,\"conversions\":0}")
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  createdBy User @relation("ABTestCreator", fields: [createdById], references: [id])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── Industry Type ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+enum IndustryType {
+  GENERAL
+  RESTAURANT
+  IT
+  MANUFACTURING
+  TRADING
+  SERVICE
+  EDUCATION
+  ECOMMERCE
+}
+
+// --- Tenant (SaaS Multi-tenancy) --------------------------------------
+model Tenant {
+  id           String       @id @default(cuid())
+  name         String
+  slug         String       @unique
+  industry     String?
+  industryType IndustryType @default(GENERAL)
+  logoUrl      String?
+  plan        String    @default("trial") // trial | starter | pro | enterprise
+  status      String    @default("active") // active | suspended | cancelled
+  trialEndsAt DateTime?
+  maxUsers    Int       @default(3)
+  maxClients  Int       @default(50)
+  phone       String?
+  address     String?
+  ownerEmail  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  users    User[]
+  payments TenantPayment[]
+}
+
+model TenantPayment {
+  id        String    @id @default(cuid())
+  tenantId  String
+  amount    Int
+  plan      String
+  months    Int       @default(1)
+  status    String    @default("pending") // pending | paid | failed | refunded
+  ref       String?
+  note      String?
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+// ─── Plan Configuration ───────────────────────────────────────────────
+model PlanConfig {
+  id           String   @id @default(cuid())
+  key          String   @unique // trial | starter | pro | enterprise
+  name         String
+  nameFa       String
+  monthlyPrice Int      @default(0)
+  yearlyPrice  Int      @default(0)
+  maxUsers     Int      @default(3)
+  maxClients   Int      @default(50)
+  maxStorageGb Int      @default(1)
+  features     Json     @default("[]")
+  isActive     Boolean  @default(true)
+  order        Int      @default(0)
+  color        String   @default("#8B5CF6")
+  badge        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─── SaaS Support ────────────────────────────────────────────────────
+model SupportRequest {
+  id         String    @id @default(cuid())
+  tenantId   String?
+  userId     String?
+  userEmail  String
+  userName   String
+  subject    String
+  message    String    @db.Text
+  category   String    @default("general") // general | billing | technical | feature
+  priority   String    @default("medium") // low | medium | high | critical
+  status     String    @default("open") // open | in_progress | waiting | resolved | closed
+  adminNote  String?   @db.Text
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  replies SupportReply[]
+}
+
+model SupportReply {
+  id         String   @id @default(cuid())
+  requestId  String
+  authorType String   @default("admin") // admin | user
+  authorName String
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+
+  request SupportRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+// ─── System Announcements ─────────────────────────────────────────────
+model SystemAnnouncement {
+  id          String    @id @default(cuid())
+  title       String
+  message     String    @db.Text
+  type        String    @default("info") // info | warning | success | error
+  targetPlans Json      @default("[]") // [] = all plans
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ─── Coupons ──────────────────────────────────────────────────────────
+model Coupon {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  description     String?
+  discountType    String    @default("percent") // percent | fixed
+  discountValue   Int
+  maxUses         Int?
+  usedCount       Int       @default(0)
+  minAmount       Int?
+  applicablePlans Json      @default("[]")
+  isActive        Boolean   @default(true)
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  uses CouponUse[]
+}
+
+model CouponUse {
+  id       String   @id @default(cuid())
+  couponId String
+  tenantId String
+  amount   Int
+  usedAt   DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id])
+}
+
+// ─── Session Management ───────────────────────────────────────────────
+model UserSession {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @db.Text
+  tokenHash    String   @unique @db.VarChar(100)
+  deviceInfo   String?
+  ipAddress    String?
+  userAgent    String?  @db.Text
+  lastActiveAt DateTime @default(now())
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ─── Push Notifications ───────────────────────────────────────────────
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @db.Text
+  p256dh    String   @db.Text
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ─── Webhooks ─────────────────────────────────────────────────────────
+model Webhook {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  url       String   @db.Text
+  events    Json     @default("[]")
+  secret    String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  deliveries WebhookDelivery[]
+}
+
+model WebhookDelivery {
+  id          String    @id @default(cuid())
+  webhookId   String
+  event       String
+  payload     Json
+  statusCode  Int?
+  response    String?   @db.Text
+  attempts    Int       @default(0)
+  deliveredAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+}
+
+// ─── Automation Rules ─────────────────────────────────────────────────
+model AutomationRule {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  name        String
+  description String?   @db.Text
+  trigger     Json
+  actions     Json      @default("[]")
+  isActive    Boolean   @default(true)
+  runCount    Int       @default(0)
+  lastRunAt   DateTime?
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  createdBy User @relation("AutomationCreator", fields: [createdById], references: [id])
+}
+
+// ─── Sales Funnel ─────────────────────────────────────────────────────
+model SalesFunnel {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  name        String
+  stages      Json     @default("[]")
+  isDefault   Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+
+  createdBy User @relation("FunnelCreator", fields: [createdById], references: [id])
+}
+
+// ─── Customer Journey Map ─────────────────────────────────────────────
+model CustomerJourney {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  name        String
+  description String?  @db.Text
+  persona     String?
+  stages      Json     @default("[]")
+  createdById String
+  createdAt   DateTime @default(now())
+
+  createdBy User @relation("JourneyCreator", fields: [createdById], references: [id])
+}
+
+// ─── Custom Report Builder ────────────────────────────────────────────
+model SavedReport {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  name        String
+  description String?
+  config      Json
+  isShared    Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+
+  createdBy User @relation("ReportCreator", fields: [createdById], references: [id])
+}
+
+// ─── Onboarding ───────────────────────────────────────────────────────
+model OnboardingProgress {
+  id        String   @id @default(cuid())
+  tenantId  String   @unique
+  steps     Json     @default("{}")
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── OTP Codes ───────────────────────────────────────────────────────
+model OtpCode {
+  id        String    @id @default(cuid())
+  phone     String
+  code      String
+  purpose   String    @default("login") // login | register
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  @@index([phone, purpose])
+  @@index([expiresAt])
+}
+
+// ─── Rate Limit (sliding window) ─────────────────────────────────────
+model RateLimitEntry {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  count     Int      @default(0)
+  resetAt   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([key])
+  @@index([resetAt])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── Content Generation Product ─────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+enum ContentPlan {
+  FREE
+  PRO
+  PLUS
+}
+
+model ContentUser {
+  id            String      @id @default(cuid())
+  name          String
+  email         String?     @unique
+  phone         String?     @unique
+  passwordHash  String?
+  plan          ContentPlan @default(FREE)
+  usedThisMonth Int         @default(0)
+  monthResetAt  DateTime    @default(now())
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  subscription  ContentSubscription?
+  generations   ContentGeneration[]
+}
+
+model ContentSubscription {
+  id            String      @id @default(cuid())
+  userId        String      @unique
+  plan          ContentPlan
+  status        String      @default("active")
+  expiresAt     DateTime
+  zarinpalRefId String?
+  authority     String?
+  amount        Int
+  createdAt     DateTime    @default(now())
+
+  user ContentUser @relation(fields: [userId], references: [id])
+}
+
+model ContentGeneration {
+  id            String   @id @default(cuid())
+  contentUserId String?
+  crmUserId     String?
+  platform      String
+  language      String   @default("fa")
+  topic         String
+  subtopics     Json     @default("[]")
+  tone          String
+  contentType   String
+  keyword       String?
+  textOutput    String   @db.LongText
+  editedText    String?  @db.LongText
+  imageUrl      String?
+  seoScore      Int?
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  contentUser ContentUser? @relation(fields: [contentUserId], references: [id])
+
+  @@index([contentUserId, createdAt(sort: Desc)])
+  @@index([crmUserId, createdAt(sort: Desc)])
+}
+
+model ContentSettings {
+  id            String  @id @default("global")
+  freePlanLimit Int     @default(5)
+  proPlanLimit  Int     @default(20)
+  plusPlanLimit Int     @default(50)
+  proPlanPrice  Int     @default(0)
+  plusPlanPrice Int     @default(0)
+  apiKey        String  @default("")
+  textModel     String  @default("gpt-5.4")
+  imageModel    String  @default("gemini-3-pro-image-preview")
+  isActive      Boolean @default(true)
+  updatedAt     DateTime @updatedAt
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── Agent Chatbot Builder Product ──────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+enum AgentPlan {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum AgentStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  DELETED
+}
+
+enum KnowledgeType {
+  TEXT
+  FILE
+  URL
+}
+
+enum KnowledgeStatus {
+  PROCESSING
+  READY
+  FAILED
+}
+
+// ─── Agent User (separate auth, like ContentUser) ─────────────────
+model AgentUser {
+  id           String    @id @default(cuid())
+  name         String
+  email        String?   @unique
+  phone        String?   @unique
+  passwordHash String?
+  plan         AgentPlan @default(FREE)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  subscription AgentSubscription?
+  agents       Agent[]
+}
+
+model AgentSubscription {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  plan          AgentPlan
+  status        String    @default("active")
+  expiresAt     DateTime
+  zarinpalRefId String?
+  authority     String?
+  amount        Int
+  createdAt     DateTime  @default(now())
+
+  user AgentUser @relation(fields: [userId], references: [id])
+}
+
+// ─── Agent (the chatbot) ──────────────────────────────────────────
+model Agent {
+  id             String      @id @default(cuid())
+  userId         String
+  name           String
+  slug           String      @unique
+  businessType   String
+  status         AgentStatus @default(DRAFT)
+  welcomeMessage String?     @db.Text
+  fallbackMessage String?    @db.Text
+  tone           String      @default("friendly")
+  languages      Json        @default("[\"fa\"]")
+  systemPrompt   String?     @db.LongText
+  totalMessages  Int         @default(0)
+  totalConversations Int     @default(0)
+  totalLeads     Int         @default(0)
+  lastActiveAt   DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  user           AgentUser          @relation(fields: [userId], references: [id])
+  knowledge      AgentKnowledge[]
+  conversations  AgentConversation[]
+  customization  AgentCustomization?
+
+  @@index([userId])
+  @@index([slug])
+}
+
+// ─── Knowledge Base ───────────────────────────────────────────────
+model AgentKnowledge {
+  id        String          @id @default(cuid())
+  agentId   String
+  type      KnowledgeType   @default(TEXT)
+  title     String
+  content   String          @db.LongText
+  sourceUrl String?
+  fileUrl   String?
+  status    KnowledgeStatus @default(READY)
+  tokens    Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+}
+
+// ─── Customization ────────────────────────────────────────────────
+model AgentCustomization {
+  id             String  @id @default(cuid())
+  agentId        String  @unique
+  primaryColor   String  @default("#5b6cff")
+  avatarType     String  @default("initials")
+  avatarUrl      String?
+  avatarEmoji    String?
+  position       String  @default("bottom-left")
+  widgetTitle    String?
+  inputPlaceholder String?
+  showBranding   Boolean @default(true)
+  darkMode       Boolean @default(false)
+  borderRadius   Int     @default(16)
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+// ─── Conversations ────────────────────────────────────────────────
+model AgentConversation {
+  id             String    @id @default(cuid())
+  agentId        String
+  sessionId      String
+  visitorName    String?
+  visitorEmail   String?
+  visitorPhone   String?
+  messageCount   Int       @default(0)
+  leadCreated    Boolean   @default(false)
+  crmLeadId      String?
+  startedAt      DateTime  @default(now())
+  lastMessageAt  DateTime  @default(now())
+  isResolved     Boolean   @default(false)
+  metadata       Json?
+
+  agent    Agent          @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  messages AgentMessage[]
+
+  @@index([agentId])
+  @@index([agentId, startedAt(sort: Desc)])
+  @@index([sessionId])
+}
+
+// ─── Messages ─────────────────────────────────────────────────────
+model AgentMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String   @default("user")
+  content        String   @db.Text
+  tokensUsed     Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  conversation AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+// ─── Business Types (admin-configurable) ─────────────────────────
+model AgentBusinessType {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  nameFa      String
+  icon        String   @default("🏢")
+  description String?
+  questions   Json     @default("[]")
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Global Settings ──────────────────────────────────────────────
+model AgentSettings {
+  id               String  @id @default("global")
+  freePlanAgents   Int     @default(1)
+  starterPlanAgents Int    @default(3)
+  proPlanAgents    Int     @default(10)
+  enterprisePlanAgents Int @default(50)
+  freePlanMessages Int     @default(100)
+  starterPlanMessages Int  @default(1000)
+  proPlanMessages  Int     @default(5000)
+  enterprisePlanMessages Int @default(50000)
+  starterPlanPrice Int     @default(0)
+  proPlanPrice     Int     @default(0)
+  enterprisePlanPrice Int  @default(0)
+  apiKey           String  @default("")
+  textModel        String  @default("gpt-5.4")
+  isActive         Boolean @default(true)
+  globalBlacklist  Json    @default("[]")
+  updatedAt        DateTime @updatedAt
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── SHARED: Inventory Management (انبار و موجودی) ───────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model InventoryCategory {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  color     String   @default("#8B5CF6")
+  icon      String?
+  createdAt DateTime @default(now())
+
+  items InventoryItem[]
+
+  @@index([tenantId])
+}
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  categoryId   String?
+  name         String
+  sku          String?
+  barcode      String?
+  unit         String   @default("عدد")
+  currentStock Float    @default(0)
+  minStock     Float    @default(0)
+  maxStock     Float?
+  costPrice    Int      @default(0)
+  sellPrice    Int      @default(0)
+  locationId   String?
+  supplierId   String?
+  description  String?  @db.Text
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  category  InventoryCategory? @relation(fields: [categoryId], references: [id])
+  location  InventoryLocation? @relation(fields: [locationId], references: [id])
+  supplier  Supplier?          @relation(fields: [supplierId], references: [id])
+  movements InventoryMovement[]
+
+  @@index([tenantId])
+  @@index([tenantId, sku])
+}
+
+model InventoryLocation {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  code      String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  items InventoryItem[]
+
+  @@index([tenantId])
+}
+
+model InventoryMovement {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  itemId    String
+  type      String   @default("in") // in | out | adjust | transfer
+  quantity  Float
+  before    Float    @default(0)
+  after     Float    @default(0)
+  reason    String?
+  reference String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  item InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([tenantId, createdAt(sort: Desc)])
+}
+
+model StockCount {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  name        String
+  date        DateTime @default(now())
+  status      String   @default("draft") // draft | in_progress | completed
+  items       Json     @default("[]")
+  notes       String?  @db.Text
+  conductedBy String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, date])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── SHARED: Supplier & Purchase Orders (تامین‌کنندگان) ──────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model Supplier {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  name         String
+  contactName  String?
+  phone        String?
+  email        String?
+  address      String?  @db.Text
+  taxId        String?
+  bankAccount  String?
+  paymentTerms String?
+  rating       Int      @default(0)
+  notes        String?  @db.Text
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  inventoryItems InventoryItem[]
+  purchaseOrders PurchaseOrder[]
+
+  @@index([tenantId])
+}
+
+model PurchaseOrder {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  number      String    @unique
+  supplierId  String
+  status      String    @default("draft") // draft | sent | confirmed | received | cancelled
+  orderDate   DateTime  @default(now())
+  expectedAt  DateTime?
+  receivedAt  DateTime?
+  subtotal    Int       @default(0)
+  taxAmount   Int       @default(0)
+  total       Int       @default(0)
+  notes       String?   @db.Text
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  supplier Supplier           @relation(fields: [supplierId], references: [id])
+  items    PurchaseOrderItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model PurchaseOrderItem {
+  id          String @id @default(cuid())
+  orderId     String
+  itemName    String
+  inventoryItemId String?
+  quantity    Float
+  unitPrice   Int
+  totalPrice  Int
+  receivedQty Float  @default(0)
+
+  order PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── SHARED: Returns (مرجوعی کالا) ────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model ReturnRequest {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  type        String   @default("customer") // customer | supplier
+  entityId    String?
+  reason      String
+  status      String   @default("pending") // pending | approved | rejected | refunded
+  totalValue  Int      @default(0)
+  notes       String?  @db.Text
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items ReturnRequestItem[]
+
+  @@index([tenantId])
+}
+
+model ReturnRequestItem {
+  id         String @id @default(cuid())
+  returnId   String
+  itemName   String
+  quantity   Float
+  unitPrice  Int
+  totalPrice Int
+
+  returnRequest ReturnRequest @relation(fields: [returnId], references: [id], onDelete: Cascade)
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── RESTAURANT: کافه / رستوران ───────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model RestMenuCategory {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  icon      String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  items RestMenuItem[]
+
+  @@index([tenantId])
+}
+
+model RestMenuItem {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  categoryId  String
+  name        String
+  description String?  @db.Text
+  price       Int      @default(0)
+  oldPrice    Int?
+  imageUrl    String?
+  isAvailable Boolean  @default(true)
+  isSpecial   Boolean  @default(false)
+  prepTime    Int?
+  calories    Int?
+  tags        Json     @default("[]")
+  allergens   Json     @default("[]")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category   RestMenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems RestOrderItem[]
+
+  @@index([tenantId])
+}
+
+model RestTable {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  number    Int
+  name      String?
+  capacity  Int      @default(4)
+  floor     String?
+  status    String   @default("available") // available | occupied | reserved | cleaning
+  isActive  Boolean  @default(true)
+  qrCode    String?
+  createdAt DateTime @default(now())
+
+  reservations RestReservation[]
+  orders       RestOrder[]
+
+  @@index([tenantId])
+}
+
+model RestReservation {
+  id         String   @id @default(cuid())
+  tenantId   String?
+  tableId    String?
+  guestName  String
+  guestPhone String
+  guestCount Int      @default(1)
+  date       DateTime
+  duration   Int      @default(90)
+  status     String   @default("confirmed") // confirmed | cancelled | completed | no_show
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  table RestTable? @relation(fields: [tableId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, date])
+}
+
+model RestOrder {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  tableId     String?
+  orderNumber String   @unique
+  type        String   @default("dine_in") // dine_in | takeaway | delivery
+  status      String   @default("new") // new | preparing | ready | served | paid | cancelled
+  subtotal    Int      @default(0)
+  taxAmount   Int      @default(0)
+  discount    Int      @default(0)
+  total       Int      @default(0)
+  paidAmount  Int      @default(0)
+  payMethod   String?
+  notes       String?
+  staffId     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  table RestTable?      @relation(fields: [tableId], references: [id])
+  items RestOrderItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt(sort: Desc)])
+}
+
+model RestOrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  menuItemId String?
+  name       String
+  quantity   Int     @default(1)
+  unitPrice  Int
+  totalPrice Int
+  notes      String?
+  status     String  @default("pending") // pending | preparing | ready | served | cancelled
+
+  order    RestOrder     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem RestMenuItem? @relation(fields: [menuItemId], references: [id])
+}
+
+model RestShift {
+  id         String   @id @default(cuid())
+  tenantId   String?
+  name       String
+  date       DateTime
+  startTime  String
+  endTime    String
+  staffIds   Json     @default("[]")
+  notes      String?
+  status     String   @default("scheduled") // scheduled | active | ended
+  totalSales Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, date])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── IT: فناوری اطلاعات ───────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model Sprint {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  projectId String?
+  name      String
+  goal      String?  @db.Text
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("planned") // planned | active | completed | cancelled
+  velocity  Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks SprintTask[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model SprintTask {
+  id          String   @id @default(cuid())
+  sprintId    String
+  title       String
+  description String?  @db.Text
+  type        String   @default("story") // story | bug | task | epic
+  status      String   @default("todo") // todo | in_progress | review | done
+  priority    String   @default("medium")
+  points      Int?
+  assigneeId  String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sprint Sprint @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+
+  @@index([sprintId])
+}
+
+model BugReport {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  projectId   String?
+  title       String
+  description String    @db.LongText
+  steps       String?   @db.Text
+  expected    String?   @db.Text
+  actual      String?   @db.Text
+  severity    String    @default("medium") // critical | high | medium | low
+  status      String    @default("open") // open | confirmed | in_progress | resolved | closed | duplicate
+  assigneeId  String?
+  reporterId  String?
+  environment String?
+  version     String?
+  attachments Json      @default("[]")
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  comments BugComment[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model BugComment {
+  id        String   @id @default(cuid())
+  bugId     String
+  authorId  String?
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  bug BugReport @relation(fields: [bugId], references: [id], onDelete: Cascade)
+}
+
+model ProductRoadmap {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  name        String
+  description String?  @db.Text
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  features RoadmapFeature[]
+
+  @@index([tenantId])
+}
+
+model RoadmapFeature {
+  id          String    @id @default(cuid())
+  roadmapId   String
+  title       String
+  description String?   @db.Text
+  status      String    @default("planned") // planned | in_progress | completed | cancelled
+  priority    String    @default("medium")
+  quarter     String?
+  estimatedAt DateTime?
+  completedAt DateTime?
+  tags        Json      @default("[]")
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  roadmap ProductRoadmap @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+}
+
+model SoftwareLicense {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  name        String
+  vendor      String?
+  licenseKey  String?
+  type        String    @default("subscription") // perpetual | subscription | concurrent
+  seats       Int?
+  usedSeats   Int       @default(0)
+  purchasedAt DateTime?
+  expiresAt   DateTime?
+  cost        Int       @default(0)
+  notes       String?   @db.Text
+  status      String    @default("active") // active | expired | cancelled
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── MANUFACTURING: تولیدی / کارخانه ─────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model ProductionLine {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  code      String?
+  capacity  Int?
+  unit      String   @default("عدد/روز")
+  isActive  Boolean  @default(true)
+  notes     String?
+  createdAt DateTime @default(now())
+
+  orders ProductionOrder[]
+
+  @@index([tenantId])
+}
+
+model ProductionOrder {
+  id           String    @id @default(cuid())
+  tenantId     String?
+  number       String    @unique
+  lineId       String?
+  productName  String
+  quantity     Float
+  unit         String    @default("عدد")
+  status       String    @default("planned") // planned | in_progress | paused | completed | cancelled
+  priority     String    @default("normal")
+  startDate    DateTime
+  dueDate      DateTime
+  completedAt  DateTime?
+  completedQty Float     @default(0)
+  rejectedQty  Float     @default(0)
+  notes        String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  line     ProductionLine?  @relation(fields: [lineId], references: [id])
+  bomItems BOMItem[]
+  qcChecks QualityCheck[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model BOMItem {
+  id                String  @id @default(cuid())
+  productionOrderId String?
+  tenantId          String?
+  productName       String
+  materialName      String
+  quantity          Float
+  unit              String  @default("عدد")
+  unitCost          Int     @default(0)
+  inventoryItemId   String?
+  notes             String?
+
+  productionOrder ProductionOrder? @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model QualityCheck {
+  id                String    @id @default(cuid())
+  tenantId          String?
+  productionOrderId String?
+  checkName         String
+  inspector         String?
+  status            String    @default("pending") // pending | passed | failed | conditional
+  checkedAt         DateTime?
+  parameters        Json      @default("[]")
+  result            String?   @db.Text
+  defectCount       Int       @default(0)
+  createdAt         DateTime  @default(now())
+
+  productionOrder ProductionOrder? @relation(fields: [productionOrderId], references: [id])
+
+  @@index([tenantId])
+}
+
+model Equipment {
+  id           String    @id @default(cuid())
+  tenantId     String?
+  name         String
+  code         String?
+  category     String    @default("machine")
+  location     String?
+  brand        String?
+  model        String?
+  serialNumber String?
+  purchasedAt  DateTime?
+  warrantyEnd  DateTime?
+  status       String    @default("operational") // operational | maintenance | broken | retired
+  notes        String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  maintenanceRecords MaintenanceRecord[]
+
+  @@index([tenantId])
+}
+
+model MaintenanceRecord {
+  id           String    @id @default(cuid())
+  tenantId     String?
+  equipmentId  String
+  type         String    @default("preventive") // preventive | corrective | emergency
+  description  String?   @db.Text
+  technicianId String?
+  startedAt    DateTime
+  completedAt  DateTime?
+  cost         Int       @default(0)
+  status       String    @default("scheduled") // scheduled | in_progress | completed | cancelled
+  nextDueAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([equipmentId])
+}
+
+model WasteRecord {
+  id             String   @id @default(cuid())
+  tenantId       String?
+  date           DateTime
+  productName    String
+  quantity       Float
+  unit           String   @default("عدد")
+  reason         String?
+  stage          String?
+  cost           Int      @default(0)
+  disposalMethod String?
+  reportedById   String?
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, date])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── TRADING: بازرگانی ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model Shipment {
+  id           String    @id @default(cuid())
+  tenantId     String?
+  number       String    @unique
+  type         String    @default("outbound") // outbound | inbound
+  origin       String?
+  destination  String?
+  carrierName  String?
+  trackingCode String?
+  status       String    @default("preparing") // preparing | shipped | in_transit | customs | delivered | returned
+  weight       Float?
+  volume       Float?
+  shippedAt    DateTime?
+  estimatedAt  DateTime?
+  deliveredAt  DateTime?
+  cost         Int       @default(0)
+  invoiceId    String?
+  notes        String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  items       ShipmentItem[]
+  trackingLogs ShipmentTrackingLog[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model ShipmentItem {
+  id            String @id @default(cuid())
+  shipmentId    String
+  name          String
+  quantity      Float
+  unit          String @default("عدد")
+  weight        Float?
+  declaredValue Int?
+  hsCode        String?
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+}
+
+model ShipmentTrackingLog {
+  id         String   @id @default(cuid())
+  shipmentId String
+  status     String
+  location   String?
+  notes      String?
+  loggedAt   DateTime @default(now())
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+}
+
+model TradeRecord {
+  id            String    @id @default(cuid())
+  tenantId      String?
+  type          String    @default("import") // import | export
+  country       String
+  productName   String
+  quantity      Float
+  unit          String    @default("عدد")
+  unitPrice     Int
+  totalValue    Int
+  currency      String    @default("USD")
+  exchangeRate  Float?
+  customsValue  Int?
+  duties        Int       @default(0)
+  clearanceDate DateTime?
+  status        String    @default("in_progress") // in_progress | cleared | rejected
+  documents     Json      @default("[]")
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, type])
+}
+
+model PricingTier {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  minQty    Float    @default(1)
+  maxQty    Float?
+  discount  Float    @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  rules PricingTierRule[]
+
+  @@index([tenantId])
+}
+
+model PricingTierRule {
+  id            String  @id @default(cuid())
+  tierId        String
+  itemName      String?
+  inventoryItemId String?
+  priceOverride Int?
+
+  tier PricingTier @relation(fields: [tierId], references: [id], onDelete: Cascade)
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── SERVICE: خدماتی ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model ServiceRequest {
+  id           String    @id @default(cuid())
+  tenantId     String?
+  number       String    @unique
+  clientId     String?
+  title        String
+  description  String    @db.Text
+  category     String    @default("general")
+  priority     String    @default("medium") // low | medium | high | urgent
+  status       String    @default("new") // new | assigned | in_progress | pending_approval | completed | cancelled
+  assigneeId   String?
+  technicianId String?
+  slaId        String?
+  slaDeadline  DateTime?
+  slaBreached  Boolean   @default(false)
+  location     String?
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  feedbackScore Int?
+  cost         Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  logs     ServiceRequestLog[]
+  feedback ServiceFeedback?
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model ServiceRequestLog {
+  id        String   @id @default(cuid())
+  requestId String
+  type      String   @default("note") // note | status_change | assignment | location_update
+  content   String   @db.Text
+  authorId  String?
+  createdAt DateTime @default(now())
+
+  request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+}
+
+model TechnicianSchedule {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  technicianId String
+  date         DateTime
+  startTime    String
+  endTime      String
+  requestId    String?
+  status       String   @default("scheduled") // scheduled | in_progress | completed | cancelled
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([technicianId, date])
+}
+
+model SLAPolicy {
+  id               String   @id @default(cuid())
+  tenantId         String?
+  name             String
+  priority         String   @default("medium")
+  responseTimeHrs  Int      @default(4)
+  resolutionTimeHrs Int     @default(24)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+model ServiceFeedback {
+  id          String   @id @default(cuid())
+  requestId   String   @unique
+  score       Int
+  comment     String?  @db.Text
+  submittedAt DateTime @default(now())
+
+  request ServiceRequest @relation(fields: [requestId], references: [id])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── EDUCATION: آموزشی ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model EduCourse {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  title        String
+  code         String?
+  description  String?  @db.Text
+  category     String?
+  level        String   @default("beginner") // beginner | intermediate | advanced
+  durationHrs  Float?
+  price        Int      @default(0)
+  maxStudents  Int?
+  instructorId String?
+  coverImage   String?
+  status       String   @default("draft") // draft | published | archived
+  isOnline     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  lessons     EduLesson[]
+  enrollments EduEnrollment[]
+  schedules   EduClassSchedule[]
+  exams       EduExam[]
+
+  @@index([tenantId])
+}
+
+model EduLesson {
+  id          String   @id @default(cuid())
+  courseId    String
+  title       String
+  content     String?  @db.LongText
+  type        String   @default("text") // video | text | quiz | file
+  duration    Int?
+  fileUrl     String?
+  videoUrl    String?
+  order       Int      @default(0)
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  course EduCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+}
+
+model EduStudent {
+  id            String    @id @default(cuid())
+  tenantId      String?
+  name          String
+  phone         String?
+  email         String?
+  birthDate     DateTime?
+  nationalId    String?
+  address       String?   @db.Text
+  guardianName  String?
+  guardianPhone String?
+  status        String    @default("active") // active | inactive | graduated
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  enrollments     EduEnrollment[]
+  attendances     EduStudentAttendance[]
+  examSubmissions EduExamSubmission[]
+  certificates    EduCertificate[]
+
+  @@index([tenantId])
+}
+
+model EduEnrollment {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  courseId    String
+  studentId   String
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+  progress    Float     @default(0)
+  status      String    @default("active") // active | completed | dropped | suspended
+  paidAmount  Int       @default(0)
+  discount    Int       @default(0)
+  finalScore  Float?
+
+  course  EduCourse  @relation(fields: [courseId], references: [id])
+  student EduStudent @relation(fields: [studentId], references: [id])
+
+  @@unique([courseId, studentId])
+  @@index([tenantId])
+}
+
+model EduClassSchedule {
+  id         String   @id @default(cuid())
+  tenantId   String?
+  courseId   String
+  title      String?
+  dayOfWeek  Int
+  startTime  String
+  endTime    String
+  room       String?
+  isOnline   Boolean  @default(false)
+  meetingUrl String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  course   EduCourse         @relation(fields: [courseId], references: [id])
+  sessions EduClassSession[]
+
+  @@index([tenantId])
+}
+
+model EduClassSession {
+  id         String    @id @default(cuid())
+  scheduleId String
+  date       DateTime
+  status     String    @default("scheduled") // scheduled | held | cancelled
+  topic      String?
+  notes      String?
+  startedAt  DateTime?
+  endedAt    DateTime?
+  createdAt  DateTime  @default(now())
+
+  schedule    EduClassSchedule       @relation(fields: [scheduleId], references: [id])
+  attendances EduStudentAttendance[]
+
+  @@index([scheduleId])
+}
+
+model EduStudentAttendance {
+  id        String   @id @default(cuid())
+  sessionId String
+  studentId String
+  status    String   @default("present") // present | absent | late | excused
+  notes     String?
+  createdAt DateTime @default(now())
+
+  session EduClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student EduStudent      @relation(fields: [studentId], references: [id])
+
+  @@unique([sessionId, studentId])
+}
+
+model EduExam {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  courseId    String?
+  title       String
+  description String?   @db.Text
+  type        String    @default("quiz") // quiz | midterm | final | assignment
+  duration    Int?
+  totalPoints Int       @default(100)
+  passScore   Int       @default(50)
+  startAt     DateTime?
+  endAt       DateTime?
+  isPublished Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  course      EduCourse?          @relation(fields: [courseId], references: [id])
+  questions   EduExamQuestion[]
+  submissions EduExamSubmission[]
+
+  @@index([tenantId])
+}
+
+model EduExamQuestion {
+  id        String   @id @default(cuid())
+  examId    String
+  text      String   @db.Text
+  type      String   @default("mcq") // mcq | true_false | short_answer | essay
+  options   Json     @default("[]")
+  answer    String?  @db.Text
+  points    Int      @default(10)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  exam EduExam @relation(fields: [examId], references: [id], onDelete: Cascade)
+}
+
+model EduExamSubmission {
+  id          String    @id @default(cuid())
+  examId      String
+  studentId   String
+  answers     Json      @default("{}")
+  score       Float?
+  isPassed    Boolean?
+  submittedAt DateTime  @default(now())
+  gradedAt    DateTime?
+  feedback    String?   @db.Text
+
+  exam    EduExam    @relation(fields: [examId], references: [id])
+  student EduStudent @relation(fields: [studentId], references: [id])
+
+  @@unique([examId, studentId])
+}
+
+model EduCertificate {
+  id        String    @id @default(cuid())
+  tenantId  String?
+  studentId String
+  courseId  String?
+  title     String
+  issuedAt  DateTime  @default(now())
+  expiresAt DateTime?
+  code      String    @unique
+  fileUrl   String?
+  notes     String?
+
+  student EduStudent @relation(fields: [studentId], references: [id])
+
+  @@index([tenantId])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── ECOMMERCE: فروشگاهی / آنلاین‌شاپ ─────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model EcomProductCategory {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  slug      String
+  parentId  String?
+  imageUrl  String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  parent   EcomProductCategory?  @relation("EcomCategoryHierarchy", fields: [parentId], references: [id])
+  children EcomProductCategory[] @relation("EcomCategoryHierarchy")
+  products EcomProduct[]
+
+  @@index([tenantId])
+}
+
+model EcomProduct {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  categoryId  String?
+  name        String
+  slug        String
+  description String?  @db.LongText
+  shortDesc   String?  @db.Text
+  sku         String?
+  barcode     String?
+  basePrice   Int      @default(0)
+  salePrice   Int?
+  stock       Int      @default(0)
+  minStock    Int      @default(0)
+  weight      Float?
+  tags        Json     @default("[]")
+  images      Json     @default("[]")
+  isPublished Boolean  @default(false)
+  isFeatured  Boolean  @default(false)
+  seoTitle    String?
+  seoDesc     String?  @db.Text
+  rating      Float    @default(0)
+  reviewCount Int      @default(0)
+  soldCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category   EcomProductCategory?  @relation(fields: [categoryId], references: [id])
+  variants   EcomProductVariant[]
+  reviews    EcomProductReview[]
+  orderItems EcomOrderItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, isPublished])
+}
+
+model EcomProductVariant {
+  id         String  @id @default(cuid())
+  productId  String
+  name       String
+  sku        String?
+  price      Int
+  stock      Int     @default(0)
+  attributes Json    @default("{}")
+  imageUrl   String?
+  isActive   Boolean @default(true)
+
+  product EcomProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model EcomOrder {
+  id            String    @id @default(cuid())
+  tenantId      String?
+  number        String    @unique
+  customerId    String?
+  customerName  String
+  customerPhone String?
+  customerEmail String?
+  shippingAddr  String?   @db.Text
+  status        String    @default("pending") // pending | confirmed | processing | shipped | delivered | cancelled | refunded
+  paymentStatus String    @default("unpaid") // unpaid | paid | partially_paid | refunded
+  paymentMethod String?
+  subtotal      Int       @default(0)
+  shippingFee   Int       @default(0)
+  discount      Int       @default(0)
+  taxAmount     Int       @default(0)
+  total         Int       @default(0)
+  paidAt        DateTime?
+  shippedAt     DateTime?
+  deliveredAt   DateTime?
+  notes         String?   @db.Text
+  discountCode  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  items    EcomOrderItem[]
+  delivery EcomDelivery?
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt(sort: Desc)])
+}
+
+model EcomOrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  productId  String?
+  variantId  String?
+  name       String
+  sku        String?
+  quantity   Int     @default(1)
+  unitPrice  Int
+  totalPrice Int
+  imageUrl   String?
+
+  order   EcomOrder    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product EcomProduct? @relation(fields: [productId], references: [id])
+}
+
+model EcomDiscountCode {
+  id            String    @id @default(cuid())
+  tenantId      String?
+  code          String    @unique
+  description   String?
+  type          String    @default("percent") // percent | fixed | free_shipping
+  value         Int
+  minOrderValue Int?
+  maxUses       Int?
+  usedCount     Int       @default(0)
+  startAt       DateTime?
+  endAt         DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  uses EcomDiscountUse[]
+
+  @@index([tenantId])
+}
+
+model EcomDiscountUse {
+  id      String   @id @default(cuid())
+  codeId  String
+  orderId String?
+  usedAt  DateTime @default(now())
+
+  code EcomDiscountCode @relation(fields: [codeId], references: [id])
+}
+
+model EcomDelivery {
+  id           String    @id @default(cuid())
+  tenantId     String?
+  orderId      String    @unique
+  carrier      String?
+  trackingCode String?
+  status       String    @default("pending") // pending | picked_up | in_transit | out_for_delivery | delivered | failed
+  estimatedAt  DateTime?
+  deliveredAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  order EcomOrder         @relation(fields: [orderId], references: [id])
+  logs  EcomDeliveryLog[]
+
+  @@index([tenantId])
+}
+
+model EcomDeliveryLog {
+  id         String   @id @default(cuid())
+  deliveryId String
+  status     String
+  location   String?
+  notes      String?
+  loggedAt   DateTime @default(now())
+
+  delivery EcomDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+}
+
+model EcomProductReview {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  productId   String
+  authorName  String
+  authorEmail String?
+  rating      Int
+  title       String?
+  comment     String?  @db.Text
+  isApproved  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  product EcomProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([tenantId])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── HR: Shifts & Onboarding ─────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model WorkShift {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  startTime String
+  endTime   String
+  breakMins Int      @default(60)
+  workDays  Json     @default("[1,2,3,4,5]")
+  color     String   @default("#6366f1")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments ShiftAssignment[]
+
+  @@index([tenantId])
+}
+
+model ShiftAssignment {
+  id        String    @id @default(cuid())
+  tenantId  String?
+  userId    String
+  shiftId   String
+  startDate DateTime
+  endDate   DateTime?
+  notes     String?
+  createdAt DateTime  @default(now())
+
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shift WorkShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+}
+
+model EmployeeOnboarding {
+  id          String    @id @default(cuid())
+  tenantId    String?
+  userId      String
+  type        String    @default("onboarding")
+  startDate   DateTime
+  targetDate  DateTime?
+  status      String    @default("in_progress")
+  tasks       Json      @default("[]")
+  notes       String?   @db.Text
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── ERP: Cost Centers & Budgets ─────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── IT: Asset Registry ──────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model ITAsset {
+  id            String    @id @default(cuid())
+  tenantId      String?
+  name          String
+  type          String    @default("hardware") // hardware | software | network | peripheral | other
+  serialNumber  String?
+  assetTag      String?
+  brand         String?
+  model         String?
+  status        String    @default("active") // active | in_use | maintenance | retired | lost
+  assignedToId  String?
+  location      String?
+  purchaseDate  DateTime?
+  purchasePrice Int?
+  warrantyEnd   DateTime?
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, type])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── Legal: Billing / Fee Tracking ───────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+model LegalFee {
+  id            String   @id @default(cuid())
+  tenantId      String?
+  caseId        String?
+  description   String
+  feeType       String   @default("fixed") // fixed | hourly | success
+  amount        Int      @default(0)
+  billableHours Float?
+  hourlyRate    Int?
+  date          DateTime @default(now())
+  status        String   @default("pending") // pending | billed | paid
+  invoiceId     String?
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, caseId])
+  @@index([tenantId, status])
+}
+
+model CostCenter {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  code        String
+  name        String
+  description String?  @db.Text
+  parentId    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent   CostCenter?  @relation("CostCenterTree", fields: [parentId], references: [id])
+  children CostCenter[] @relation("CostCenterTree")
+  budgets  Budget[]
+
+  @@index([tenantId])
+  @@unique([tenantId, code])
+}
+
+model Budget {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  title        String
+  year         Int
+  period       String   @default("annual") // annual | q1 | q2 | q3 | q4 | monthly
+  month        Int?
+  accountId    String?
+  costCenterId String?
+  amount       Int      @default(0)
+  notes        String?  @db.Text
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  account    ChartOfAccount? @relation(fields: [accountId], references: [id])
+  costCenter CostCenter?     @relation(fields: [costCenterId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, year, period])
+}

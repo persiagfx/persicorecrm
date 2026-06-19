@@ -1,0 +1,36 @@
+# PersiCore SEO Robots Configuration
+# Allow all search engines to crawl and index the site
+
+User-agent: *
+Allow: /
+Allow: /index.html
+Allow: /styles.css
+Allow: /script.js
+
+# Disallow private directories
+Disallow: /admin/
+Disallow: /.env
+Disallow: /private/
+
+# Crawl Delay
+Crawl-delay: 1
+
+# Request Rate
+Request-rate: 30/60
+
+# Sitemaps
+Sitemap: https://persicore.ir/sitemap.xml
+Sitemap: https://persicore.ir/sitemap-fa.xml
+
+# Specific user-agent rules
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: bingbot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Yandexbot
+Allow: /
+Crawl-delay: 2

@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  lint-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: crm/package-lock.json
+
+      - name: Install dependencies
+        working-directory: crm
+        run: npm ci --legacy-peer-deps
+
+      - name: Type check
+        working-directory: crm
+        run: npx tsc --noEmit --skipLibCheck
+
+      - name: Lint
+        working-directory: crm
+        run: npx next lint --dir src --max-warnings 50
+        env:
+          DATABASE_URL: "mysql://root:root@localhost:3306/test"
+          JWT_SECRET: "ci-test-secret-minimum-32-chars-placeholder"
+          PORTAL_JWT_SECRET: "ci-portal-test-secret-minimum-32-chars-placeholder"
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: lint-typecheck
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: crm/package-lock.json
+
+      - name: Install dependencies
+        working-directory: crm
+        run: npm ci --legacy-peer-deps
+
+      - name: Build
+        working-directory: crm
+        run: npm run build
+        env:
+          DATABASE_URL: "mysql://root:root@localhost:3306/test"
+          JWT_SECRET: "ci-test-secret-minimum-32-chars-placeholder"
+          PORTAL_JWT_SECRET: "ci-portal-test-secret-minimum-32-chars-placeholder"
+          NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+          NEXT_PUBLIC_APP_NAME: "Persicore CRM"
+          NEXT_TELEMETRY_DISABLED: "1"
+          SENTRY_DSN: ""
+          NEXT_PUBLIC_SENTRY_DSN: ""
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: nextjs-build
+          path: crm/.next/standalone
+          retention-days: 7
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: crm/package-lock.json
+
+      - name: Install dependencies
+        working-directory: crm
+        run: npm ci --legacy-peer-deps
+
+      - name: Install Playwright browsers
+        working-directory: crm
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: crm
+        run: npx playwright test --project=chromium
+        env:
+          DATABASE_URL: "mysql://root:root@localhost:3306/test"
+          JWT_SECRET: "ci-test-secret-minimum-32-chars-placeholder"
+          PORTAL_JWT_SECRET: "ci-portal-test-secret-minimum-32-chars-placeholder"
+          NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+          NEXT_PUBLIC_APP_NAME: "Persicore CRM"
+          NEXT_TELEMETRY_DISABLED: "1"
+          SENTRY_DSN: ""
+          NEXT_PUBLIC_SENTRY_DSN: ""
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: crm/playwright-report/
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          path: standalone
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /var/www/persicore-crm
+            pm2 stop persicore-crm || true
+            rsync -a --delete /tmp/standalone/ ./standalone/
+            pm2 start persicore-crm || pm2 restart persicore-crm
+            echo "Deployed successfully"
