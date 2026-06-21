@@ -41,6 +41,11 @@ export async function POST(req: NextRequest) {
       if (existing) return badRequest("این شماره موبایل قبلاً ثبت شده است");
     }
 
+    if (purpose === "login") {
+      const user = await prisma.user.findUnique({ where: { phone } });
+      if (!user) return Response.json({ error: "این شماره در سیستم ثبت نشده است. برای استفاده از پرسیکور ابتدا ثبت‌نام کنید." }, { status: 404 });
+    }
+
     // کدهای قدیمی منقضی نشده را باطل کن
     await prisma.otpCode.updateMany({
       where: { phone, purpose, usedAt: null, expiresAt: { gt: new Date() } },

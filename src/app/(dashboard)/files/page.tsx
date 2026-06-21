@@ -128,7 +128,7 @@ export default function FilesPage() {
     if (!newFolderName.trim()) return;
     try {
       const res = await apiClient.post("/file-folders", { name: newFolderName.trim(), parentId: activeFolder });
-      setFolders((p) => [...p, res.data]);
+      setFolders((p) => [...p, res.data.data]);
       setNewFolderName("");
       setShowNewFolder(false);
       toast.success("پوشه ایجاد شد");

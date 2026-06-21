@@ -164,9 +164,26 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // ─── agent.persicore.ir → /agent/... ──────────────────────────────
+  if (hostname.startsWith("agent.")) {
+    if (!url.pathname.startsWith("/agent") && !url.pathname.startsWith("/api/agent")) {
+      if (url.pathname.startsWith("/api/")) {
+        url.pathname = "/api/agent" + url.pathname.slice(4);
+      } else {
+        url.pathname = "/agent" + url.pathname;
+      }
+      return NextResponse.rewrite(url);
+    }
+  }
+
   // ─── portal.persicore.ir → /portal/... ─────────────────────────────
   if (hostname.startsWith("portal.")) {
-    if (!url.pathname.startsWith("/portal") && !url.pathname.startsWith("/api/portal")) {
+    const PORTAL_PUBLIC_API = ["/api/invoices/sign/", "/api/contracts/sign/"];
+    if (
+      !url.pathname.startsWith("/portal") &&
+      !url.pathname.startsWith("/api/portal") &&
+      !PORTAL_PUBLIC_API.some((p) => url.pathname.startsWith(p))
+    ) {
       if (url.pathname.startsWith("/api/")) {
         url.pathname = "/api/portal" + url.pathname.slice(4);
       } else {

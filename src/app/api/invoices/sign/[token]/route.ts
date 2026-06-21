@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (prisma.invoice as any).update({
       where: { signToken: token },
-      data: { clientSignatureDataUrl: body.signatureDataUrl, clientSignedAt: signedAt, clientSignedIp: ip },
+      data: { clientSignatureDataUrl: body.signatureDataUrl, clientSignedAt: signedAt, clientSignedIp: ip, status: "signed" },
     });
 
     const clientName = invoice.client?.contactName ?? invoice.client?.companyName ?? "مشتری";

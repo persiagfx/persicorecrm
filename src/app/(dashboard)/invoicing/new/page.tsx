@@ -224,11 +224,46 @@ export default function NewInvoicePage() {
   const clientProjects = allProjects.filter((p) => p.clientId === clientId);
   const selectedClient = clients.find((c) => c.id === clientId);
 
-  const handleSubmit = () => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
     if (!clientId) { toast.error("لطفاً مشتری را انتخاب کنید"); return; }
     if (items.every((i) => !i.description)) { toast.error("حداقل یک آیتم وارد کنید"); return; }
-    toast.success(type === "invoice" ? "فاکتور با موفقیت ذخیره شد" : "پیش‌فاکتور با موفقیت ذخیره شد");
-    router.push("/invoicing");
+    if (!dueDate) { toast.error("لطفاً تاریخ سررسید را وارد کنید"); return; }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        type,
+        clientId,
+        projectId: projectId || undefined,
+        items: items.filter((i) => i.description).map((i) => ({
+          description: i.description,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          unit: i.unit,
+        })),
+        taxRate: taxEnabled ? taxRate : 0,
+        discount: discountAmount,
+        status: "draft" as const,
+        dueDate,
+        notes: notes || undefined,
+        isRecurring,
+        recurringInterval: isRecurring ? recurringInterval : undefined,
+        installments: paymentTerms === "installments" && installments.length > 0
+          ? installments.map((ins) => ({ amount: ins.amount, dueDate: ins.dueDate }))
+          : undefined,
+      };
+
+      await apiClient.post("/invoices", payload);
+      toast.success(type === "invoice" ? "فاکتور با موفقیت ذخیره شد" : "پیش‌فاکتور با موفقیت ذخیره شد");
+      router.push(`/invoicing?t=${Date.now()}`);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      toast.error(msg ?? "خطا در ذخیره فاکتور");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   /* ═══════════════════════════════════════════════════ */
@@ -623,8 +658,9 @@ export default function NewInvoicePage() {
           {/* Submit */}
           <div className="flex gap-3 pb-6">
             <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleSubmit}
-              className="flex-1 py-3 rounded-xl gradient-brand text-black font-semibold gold-glow">
-              {type === "invoice" ? "ذخیره فاکتور" : "ذخیره پیش‌فاکتور"}
+              disabled={submitting}
+              className="flex-1 py-3 rounded-xl gradient-brand text-black font-semibold gold-glow disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+              {submitting ? <><span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />در حال ذخیره...</> : (type === "invoice" ? "ذخیره فاکتور" : "ذخیره پیش‌فاکتور")}
             </motion.button>
             <Link href="/invoicing">
               <button className="px-5 py-3 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">

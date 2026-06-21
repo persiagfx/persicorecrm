@@ -423,14 +423,15 @@ export default function ContractsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
+    Promise.allSettled([
       apiClient.get("/contracts"),
       apiClient.get("/clients?perPage=100"),
     ]).then(([cRes, clRes]) => {
-      setContracts(cRes.data.data ?? []);
-      setClients(clRes.data.data ?? []);
-    }).catch(() => toast.error("خطا در بارگذاری داده‌ها"))
-      .finally(() => setIsLoading(false));
+      if (cRes.status === "fulfilled") setContracts(cRes.value.data.data ?? []);
+      else toast.error("خطا در بارگذاری قراردادها");
+      if (clRes.status === "fulfilled") setClients(clRes.value.data.data ?? []);
+      else toast.error("خطا در بارگذاری مشتریان");
+    }).finally(() => setIsLoading(false));
   }, []);
 
   const filtered = contracts.filter((c) => {
@@ -698,7 +699,7 @@ export default function ContractsPage() {
                     className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm hover:bg-muted/80 transition-colors">
                     <Eye className="w-4 h-4" />پیش‌نمایش قرارداد
                   </button>
-                  {activeContract.status === "draft" && (
+                  {!activeContract.adminSignedAt && (
                     <button onClick={() => setAdminSignContract(activeContract)}
                       className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 text-sm hover:bg-amber-500/20 transition-colors">
                       <Pen className="w-4 h-4" />امضای ادمین

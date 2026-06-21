@@ -138,7 +138,7 @@ export default function ProjectDetailPage() {
         apiClient.get(`/projects/${id}`),
         apiClient.get("/users"),
       ]);
-      const p: ProjectData = projRes.data;
+      const p: ProjectData = projRes.data.data;
       setProject(p);
       setRepoUrl(p.repoUrl ?? "");
       setServers(Array.isArray(p.servers) && p.servers.length > 0 ? p.servers as ServerInfo[] : [
@@ -171,7 +171,7 @@ export default function ProjectDetailPage() {
     setSavingMilestone(true);
     try {
       const res = await apiClient.post("/milestones", { ...newMilestone, projectId: id });
-      setProject((p) => p ? { ...p, milestones: [...p.milestones, res.data] } : p);
+      setProject((p) => p ? { ...p, milestones: [...p.milestones, res.data.data] } : p);
       setNewMilestone({ title: "", dueDate: "", description: "" });
       setShowMilestoneForm(false);
       toast.success("نقطه عطف اضافه شد");
@@ -195,7 +195,7 @@ export default function ProjectDetailPage() {
     setSavingTask(true);
     try {
       const res = await apiClient.post("/tasks", { ...newTask, projectId: id, status: "backlog" });
-      setProject((p) => p ? { ...p, tasks: [...p.tasks, res.data] } : p);
+      setProject((p) => p ? { ...p, tasks: [...p.tasks, res.data.data] } : p);
       setNewTask({ title: "", priority: "medium", dueDate: "", assigneeIds: [] });
       setShowTaskForm(false);
       toast.success("تسک اضافه شد");

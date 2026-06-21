@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, FileText, DollarSign, Clock, AlertTriangle, X, Printer, Send, CheckCircle2, Repeat, Download, PenLine, Trash2, Search } from "lucide-react";
 import SignatureCanvas from "react-signature-canvas";
@@ -374,6 +375,7 @@ function InvoiceDetailModal({ invoice, onClose, onMarkPaid, onUpdate }: { invoic
 
 // ─── Page ─────────────────────────────────────────────────────────────
 export default function InvoicingPage() {
+  const searchParams = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [tab, setTab] = useState<"all" | "quotes" | "invoices" | "overdue">("all");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -397,13 +399,17 @@ export default function InvoicingPage() {
     finally { setExporting(false); }
   };
 
-  useEffect(() => {
+  const fetchInvoices = () => {
     setLoading(true);
     apiClient.get("/invoices?perPage=100")
       .then((res) => setInvoices(res.data.data ?? []))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => {
+    fetchInvoices();
+  }, [searchParams.get("t")]);
 
   const paid = invoices.filter((i) => i.status === "paid").reduce((s, i) => s + i.total, 0);
   const pending = invoices.filter((i) => i.status === "sent").reduce((s, i) => s + i.total, 0);

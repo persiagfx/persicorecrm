@@ -115,8 +115,8 @@ export function currentJalaaliYear(now: Date = new Date()): number {
 // ─── واحد پول ─────────────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════
 
-export function rialToToman(rial: number): number {
-  return Math.round(rial / 10);
+export function rialToToman(toman: number): number {
+  return Math.round(toman);
 }
 
 export function formatRial(rial: number): string {

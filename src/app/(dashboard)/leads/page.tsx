@@ -48,7 +48,7 @@ export default function LeadsPage() {
       fd.append("file", file);
       fd.append("type", "leads");
       const res = await apiClient.post("/import", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      const { created, errors } = res.data;
+      const { created, errors } = res.data.data;
       toast.success(`${created} لید وارد شد${errors.length > 0 ? ` (${errors.length} خطا)` : ""}`);
       // reload leads
       setLoading(true);

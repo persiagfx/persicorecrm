@@ -38,7 +38,7 @@ export default function DesignReviewPage() {
     try {
       // دریافت فایل‌های تصویری از DB
       const res = await apiClient.get("/file-items?type=image");
-      setFiles(res.data ?? []);
+      setFiles(res.data.data ?? []);
     } catch { toast.error("خطا در بارگذاری فایل‌ها"); }
     finally { setLoading(false); }
   }, []);

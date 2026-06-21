@@ -13,9 +13,7 @@ import { StatCard } from "@/components/common/StatCard";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api/client";
-import { rialToToman } from "@/lib/finance/iran-tax";
-
-const fmtRial = (rial: number, short = false) => formatPrice(rialToToman(rial), short);
+const fmtRial = (amount: number, short = false) => formatPrice(amount, short);
 
 const TABS = ["داشبورد مالی", "سود و زیان (P&L)"] as const;
 type Tab = typeof TABS[number];
@@ -107,10 +105,10 @@ export default function FinancePage() {
           </motion.div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard title="درآمد کل (تومان)" value={rialToToman(s?.totalRevenue ?? 0)} icon={TrendingUp} gradient="gradient-brand" suffix=" تومان" />
-            <StatCard title="هزینه‌ها (تومان)" value={rialToToman(s?.totalExpenses ?? 0)} icon={TrendingDown} suffix=" تومان" />
-            <StatCard title="سهم تیم (تومان)" value={rialToToman(s?.teamShare ?? 0)} icon={DollarSign} suffix=" تومان" />
-            <StatCard title="سود خالص (تومان)" value={rialToToman(s?.netProfit ?? 0)} icon={TrendingUp} suffix=" تومان" />
+            <StatCard title="درآمد کل (تومان)" value={(s?.totalRevenue ?? 0)} icon={TrendingUp} gradient="gradient-brand" suffix=" تومان" />
+            <StatCard title="هزینه‌ها (تومان)" value={(s?.totalExpenses ?? 0)} icon={TrendingDown} suffix=" تومان" />
+            <StatCard title="سهم تیم (تومان)" value={(s?.teamShare ?? 0)} icon={DollarSign} suffix=" تومان" />
+            <StatCard title="سود خالص (تومان)" value={(s?.netProfit ?? 0)} icon={TrendingUp} suffix=" تومان" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

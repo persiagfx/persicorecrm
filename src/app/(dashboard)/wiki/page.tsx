@@ -195,7 +195,13 @@ export default function WikiPage() {
 
         {/* Panel 3: Content / Editor */}
         <div className="flex-1 overflow-hidden bg-card">
-          {isEditing ? (
+          {!activeArticle ? (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
+              <BookOpen className="w-12 h-12 opacity-20" />
+              <p className="text-sm">مقاله‌ای انتخاب نشده</p>
+              <p className="text-xs opacity-60">برای شروع یک مقاله جدید بسازید</p>
+            </div>
+          ) : isEditing ? (
             <WikiEditor
               key={activeId}
               content={activeArticle.content}

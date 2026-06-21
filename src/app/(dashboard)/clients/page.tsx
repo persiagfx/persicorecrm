@@ -192,7 +192,7 @@ export default function ClientsPage() {
       fd.append("file", file);
       fd.append("type", "clients");
       const res = await apiClient.post("/import", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      const { created, errors } = res.data;
+      const { created, errors } = res.data.data;
       toast.success(`${created} مشتری وارد شد${errors.length > 0 ? ` (${errors.length} خطا)` : ""}`);
       fetchClients();
     } catch { toast.error("خطا در وارد کردن فایل"); }

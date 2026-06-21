@@ -8,9 +8,7 @@ import {
 } from "recharts";
 import { Target, TrendingDown, TrendingUp, RefreshCw, Tag } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
-import { rialToToman } from "@/lib/finance/iran-tax";
-
-const fmtR = (rial: number, short = false) => formatPrice(rialToToman(rial), short);
+const fmtR = (amount: number, short = false) => formatPrice(amount, short);
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api/client";
