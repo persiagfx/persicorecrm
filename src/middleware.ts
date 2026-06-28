@@ -229,6 +229,18 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // ─── jobs.persicore.ir → /jobs/... ─────────────────────────────────
+  if (hostname.startsWith("jobs.")) {
+    if (!url.pathname.startsWith("/jobs") && !url.pathname.startsWith("/api/jobs")) {
+      if (url.pathname.startsWith("/api/")) {
+        url.pathname = "/api/jobs" + url.pathname.slice(4);
+      } else {
+        url.pathname = "/jobs" + url.pathname;
+      }
+      return NextResponse.rewrite(url);
+    }
+  }
+
   // ─── blog.persicore.ir → /blog/... ─────────────────────────────────
   if (hostname.startsWith("blog.")) {
     if (!url.pathname.startsWith("/blog") && !url.pathname.startsWith("/api/blog")) {
