@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, FileText, DollarSign, Clock, AlertTriangle, X, Printer, Send, CheckCircle2, Repeat, Download, PenLine, Trash2, Search } from "lucide-react";
@@ -375,7 +375,7 @@ function InvoiceDetailModal({ invoice, onClose, onMarkPaid, onUpdate }: { invoic
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────
-export default function InvoicingPage() {
+function InvoicingPageInner() {
   const searchParams = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [tab, setTab] = useState<"all" | "quotes" | "invoices" | "overdue">("all");
@@ -619,4 +619,8 @@ export default function InvoicingPage() {
       </AnimatePresence>
     </div>
   );
+}
+
+export default function InvoicingPage() {
+  return <Suspense><InvoicingPageInner /></Suspense>;
 }

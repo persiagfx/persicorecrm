@@ -79,10 +79,14 @@ function SearchContent() {
   );
 }
 
-export default function SearchPage() {
+function SearchPageInner() {
   return (
     <Suspense fallback={<div className="min-h-screen" />}>
       <SearchContent />
     </Suspense>
   );
+}
+
+export default function SearchPage() {
+  return <Suspense><SearchPageInner /></Suspense>;
 }

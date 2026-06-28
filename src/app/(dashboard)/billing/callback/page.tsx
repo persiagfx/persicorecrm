@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { CheckCircle2, XCircle, Loader2, ArrowLeft } from "lucide-react";
@@ -10,7 +10,7 @@ import Link from "next/link";
 
 type Status = "verifying" | "success" | "failed";
 
-export default function BillingCallbackPage() {
+function BillingCallbackPageInner() {
   const params = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<Status>("verifying");
@@ -105,4 +105,8 @@ export default function BillingCallbackPage() {
       </motion.div>
     </div>
   );
+}
+
+export default function BillingCallbackPage() {
+  return <Suspense><BillingCallbackPageInner /></Suspense>;
 }

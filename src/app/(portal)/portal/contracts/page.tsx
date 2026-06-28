@@ -653,7 +653,7 @@ function ContractsPageInner() {
 }
 
 // ─── Page with Suspense (required for useSearchParams) ─────────────────
-export default function PortalContractsPage() {
+function PortalContractsPageInner() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center h-64">
@@ -663,4 +663,8 @@ export default function PortalContractsPage() {
       <ContractsPageInner />
     </Suspense>
   );
+}
+
+export default function PortalContractsPage() {
+  return <Suspense><PortalContractsPageInner /></Suspense>;
 }

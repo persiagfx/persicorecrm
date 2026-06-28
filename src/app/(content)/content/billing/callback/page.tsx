@@ -1,12 +1,12 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react";
 
-export default function ContentBillingCallbackPage() {
+function ContentBillingCallbackPageInner() {
   const params = useSearchParams();
   const router = useRouter();
   const called = useRef(false);
@@ -105,4 +105,8 @@ export default function ContentBillingCallbackPage() {
       </motion.div>
     </div>
   );
+}
+
+export default function ContentBillingCallbackPage() {
+  return <Suspense><ContentBillingCallbackPageInner /></Suspense>;
 }

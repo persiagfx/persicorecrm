@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Headphones, Plus, X, CheckCircle2, Clock } from "lucide-react";
@@ -26,7 +26,7 @@ const PRIORITY_COLOR: Record<string, string> = {
   low: "bg-emerald-400",
 };
 
-export default function PortalTicketsPage() {
+function PortalTicketsPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const { token } = usePortal();
@@ -180,4 +180,8 @@ export default function PortalTicketsPage() {
       </div>
     </div>
   );
+}
+
+export default function PortalTicketsPage() {
+  return <Suspense><PortalTicketsPageInner /></Suspense>;
 }

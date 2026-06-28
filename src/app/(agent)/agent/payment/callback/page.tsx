@@ -1,12 +1,13 @@
 "use client";
 export const dynamic = "force-dynamic";
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
 type State = "verifying" | "success" | "failed" | "cancelled";
 
-export default function PaymentCallbackPage() {
+function PaymentCallbackInner() {
   const params = useSearchParams();
   const router = useRouter();
   const [state, setState] = useState<State>("verifying");
@@ -56,7 +57,6 @@ export default function PaymentCallbackPage() {
             <p className="text-white/50 text-sm">لطفاً صبر کنید...</p>
           </>
         )}
-
         {state === "success" && (
           <>
             <div className="w-20 h-20 bg-green-500/15 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">✅</div>
@@ -69,7 +69,6 @@ export default function PaymentCallbackPage() {
             </Link>
           </>
         )}
-
         {state === "cancelled" && (
           <>
             <div className="w-20 h-20 bg-amber-500/15 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">⚠️</div>
@@ -80,7 +79,6 @@ export default function PaymentCallbackPage() {
             </Link>
           </>
         )}
-
         {state === "failed" && (
           <>
             <div className="w-20 h-20 bg-red-500/15 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">❌</div>
@@ -100,4 +98,8 @@ export default function PaymentCallbackPage() {
       </div>
     </div>
   );
+}
+
+export default function PaymentCallbackPage() {
+  return <Suspense><PaymentCallbackInner /></Suspense>;
 }

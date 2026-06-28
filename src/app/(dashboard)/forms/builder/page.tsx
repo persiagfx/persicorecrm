@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { Suspense, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ClipboardList, Plus, Trash2, GripVertical, ChevronUp, ChevronDown,
@@ -40,7 +40,7 @@ const FORM_TYPES: { id: SurveyForm["type"]; label: string }[] = [
   { id: "custom", label: "سفارشی" },
 ];
 
-export default function FormBuilderPage() {
+function FormBuilderPageInner() {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -349,4 +349,8 @@ export default function FormBuilderPage() {
       </div>
     </RoleGuard>
   );
+}
+
+export default function FormBuilderPage() {
+  return <Suspense><FormBuilderPageInner /></Suspense>;
 }

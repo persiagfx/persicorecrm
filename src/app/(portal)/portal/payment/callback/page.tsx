@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 type Status = "loading" | "success" | "failed";
 
-export default function PaymentCallbackPage() {
+function PaymentCallbackPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<Status>("loading");
@@ -113,4 +113,8 @@ export default function PaymentCallbackPage() {
       </motion.div>
     </div>
   );
+}
+
+export default function PaymentCallbackPage() {
+  return <Suspense><PaymentCallbackPageInner /></Suspense>;
 }
